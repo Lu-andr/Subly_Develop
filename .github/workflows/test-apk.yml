@@ -1,0 +1,59 @@
+name: Build phone test APK
+
+on:
+  push:
+    branches: [codex/test-apk]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      CI: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install project dependencies
+        run: npm ci
+      - name: Check TypeScript and regressions
+        run: |
+          npm run typecheck
+          npm test
+      - name: Install Android build dependencies
+        run: |
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-36' 'build-tools;36.0.0' 'ndk;27.1.12297006' 'cmake;3.22.1'
+      - name: Build standalone test APK
+        working-directory: android
+        env:
+          SUBLY_UPLOAD_STORE_FILE: debug.keystore
+          SUBLY_UPLOAD_STORE_PASSWORD: android
+          SUBLY_UPLOAD_KEY_ALIAS: androiddebugkey
+          SUBLY_UPLOAD_KEY_PASSWORD: android
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:assembleRelease --no-daemon --stacktrace -PreactNativeArchitectures=arm64-v8a,armeabi-v7a -Pandroid.buildToolsVersion=36.0.0
+      - name: Verify signature and record checksum
+        run: |
+          mkdir -p test-apk
+          cp android/app/build/outputs/apk/release/app-release.apk test-apk/Subly-test.apk
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs test-apk/Subly-test.apk
+          cd test-apk
+          sha256sum Subly-test.apk > SHA256SUMS.txt
+      - name: Upload phone APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Subly-phone-test
+          path: test-apk/
+          if-no-files-found: error
+          retention-days: 14
