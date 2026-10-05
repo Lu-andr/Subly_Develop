@@ -20,7 +20,7 @@ import { TrialCard } from '../../components/trial/TrialCard';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { PageLoader } from '../../components/ui/LoadingScreen';
 import { getActiveTrials, getExpiringSoon } from '../../hooks/useTrials';
-import { formatCurrency } from '../../utils/currencyUtils';
+import { formatCurrencyTotals } from '../../utils/currencyUtils';
 
 type Tab = 'active' | 'expiring' | 'all';
 type SortOption = 'ending_soonest' | 'highest_charge' | 'name_asc' | 'recently_added';
@@ -61,7 +61,7 @@ export const TrialsScreen: React.FC<TrialsScreenProps> = ({
 
   // Total active monthly burn
   const totalCommitment = useMemo(() => {
-    return activeTrials.reduce((sum, t) => sum + t.charge_amount, 0);
+    return formatCurrencyTotals(activeTrials);
   }, [activeTrials]);
 
   const filteredTrials = useMemo(() => {
@@ -71,9 +71,7 @@ export const TrialsScreen: React.FC<TrialsScreenProps> = ({
     } else if (activeTab === 'expiring') {
       list = expiringSoon;
     } else {
-      list = trials.filter(
-        (t) => t.status === 'ACTIVE' || t.status === 'EXPIRING_SOON'
-      );
+      list = trials;
     }
 
     // Apply Search Filter
@@ -117,7 +115,7 @@ export const TrialsScreen: React.FC<TrialsScreenProps> = ({
         <View>
           <Text style={styles.title}>Subscriptions</Text>
           <Text style={styles.subtitle}>
-            {activeTrials.length} active • {formatCurrency(totalCommitment, 'INR')} at risk
+            {activeTrials.length} active • {totalCommitment} at risk
           </Text>
         </View>
         <TouchableOpacity

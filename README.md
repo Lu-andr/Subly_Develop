@@ -1,54 +1,43 @@
 # Subly
 
-**Subly** is a cross-platform subscription tracker built with Expo and React Native. It is designed to help people keep recurring subscriptions visible, understand upcoming renewals, and avoid surprise charges.
+React Native / Expo subscription trial tracker with Supabase authentication and records, and local device reminders.
 
-## Highlights
+## Release preparation
 
-- Subscription list with recurring billing details.
-- Reminder and notification support for upcoming renewals.
-- Mobile-first navigation with a light visual design.
-- Supabase integration for application data and authentication flows.
-- Android, iOS, and web targets through Expo.
+See [the Google Play release guide](docs/GOOGLE_PLAY_RELEASE.md). Source preparation is not proof of production readiness: live Supabase function deployment, contact/legal pages, upload-key signing and device tests remain required.
 
-## Technology stack
+## Development
 
-| Area | Technology |
-| --- | --- |
-| Mobile app | React Native 0.86 and Expo 57 |
-| Language | TypeScript |
-| Navigation | React Navigation |
-| Backend | Supabase JavaScript client |
-| Notifications | Expo Notifications |
-| Secure storage | Expo Secure Store |
-| Platforms | Android, iOS, and web |
-
-## Getting started
-
-Install Node.js and npm, then run:
-
-```bash
-git clone https://github.com/mayankbohara0-dev/Subly.git
-cd Subly
-npm install
+```
+npm ci
 npm start
 ```
 
-Use the Expo CLI prompts to open the project on an Android emulator, iOS simulator, a physical device, or the web browser:
+Use a development build for OAuth testing; Expo Go cannot represent the production callback scheme. `npm run android` requires an Android SDK and JDK. `npm run web` runs the browser target, which is separate from the Google Play Android release.
 
-```bash
-npm run android
-npm run ios
-npm run web
+Configure public variables using `.env.example`; actual .env files must stay outside Git. The public Supabase anon key respects deployed Row Level Security. Server service-role keys must never be put in the app or EXPO_PUBLIC variables.
+
+## Checks
+
+```
+npm run typecheck
+npm test
+npm run check:release
 ```
 
-## Configuration and security
+The release checker intentionally fails until support/contact/URL prerequisites are completed. The tests cover numeric/date regressions, mixed currencies, caller-authenticated account deletion and notification cleanup with mocked services. They do not replace physical-device or live-database tests.
 
-The repository expects environment-specific Supabase configuration. Do not commit real API secrets, service-role keys, notification credentials, or production data. Review the files under [`supabase/`](./supabase) and [`docs/`](./docs) before connecting a deployment.
+## Behavior and limits
 
-## Status
+- Manual entry of service, dates, amount, currency, billing frequency, provider link and notes.
+- Currencies offered: RUB, KZT, UZS, VND, PHP, ZAR. Default: ZAR. Old stored codes remain readable.
+- Summaries group currencies; there is no exchange-rate conversion.
+- Provider templates identify services, not verified current offers or prices.
+- Local reminders at 7/3/1/0 days before an entered date. Up to the 15 nearest active records are scheduled.
+- One entered end date is tracked; subsequent renewals are not automatically generated.
+- Cancellation is performed by the user with the provider. Subly stores the user's cancellation mark.
+- Internet is needed for account access and saving/loading records. Previously scheduled local reminders do not require a remote push service.
 
-Subly is an active application prototype. Product flows, notification behavior, persistence, and release configuration may continue to evolve.
+## Layout
 
-## Author
-
-Maintained by [Mayank Bohara](https://github.com/mayankbohara0-dev).
+`App.tsx` starts the app flow. `src/screens` contains screens, `src/components` UI elements, `src/hooks` state, `src/services` database/notification operations, `src/lib` authentication/storage clients, `src/utils` date/currency/parser helpers. `android` is the native project; `supabase` contains schema and the deletion function; `docs` contains release material and draft public documents.

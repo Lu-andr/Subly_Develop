@@ -1,5 +1,9 @@
 // TrialGuard — Auth Hook
-import { useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { Alert, AppState, Linking } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
+import { handleAuthLink } from '../lib/authLinks';
+import { cancelAllTrialNotifications } from '../services/notificationService';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { Profile } from '../types';
@@ -11,6 +15,7 @@ interface AuthState {
   profile: Profile | null;
   loading: boolean;
   error: string | null;
+  isPasswordRecovery: boolean;
 }
 
 interface AuthActions {
@@ -22,14 +27,17 @@ interface AuthActions {
   deleteAccount: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   clearError: () => void;
+  completePasswordRecovery: () => void;
 }
 
-export function useAuth(): AuthState & AuthActions {
+function useAuthState(): AuthState & AuthActions {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isPasswordRecovery, setPasswordRecovery] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const activeUserId = useRef<string | null>(null);
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
@@ -38,7 +46,7 @@ export function useAuth(): AuthState & AuthActions {
         .select('*')
         .eq('id', userId)
         .single();
-      if (!profileError && data) {
+      if (!profileError && data && activeUserId.current === userId) {
         setProfile(data as Profile);
         analytics.identify(userId);
       }
@@ -48,33 +56,43 @@ export function useAuth(): AuthState & AuthActions {
   }, []);
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
+    let mounted = true;
+    const applySession = (s: Session | null) => {
+      if (!mounted) return;
+      if (activeUserId.current !== (s?.user.id ?? null)) setProfile(null);
+      activeUserId.current = s?.user.id ?? null;
       setSession(s);
       setUser(s?.user ?? null);
+      setLoading(false);
       if (s?.user) {
-        fetchProfile(s.user.id).finally(() => setLoading(false));
+        // Run outside Supabase's synchronous auth callback lock.
+        setTimeout(() => { if (mounted) void fetchProfile(s.user.id); }, 0);
       } else {
-        setLoading(false);
+        setProfile(null);
+        setPasswordRecovery(false);
+        analytics.reset();
       }
+    };
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (error && mounted) setError('Unable to restore your session. Please sign in again.');
+      applySession(data.session);
+    }).catch(() => { if (mounted) setLoading(false); });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+      if (event === 'PASSWORD_RECOVERY') setPasswordRecovery(true);
+      applySession(s);
     });
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, s) => {
-        setSession(s);
-        setUser(s?.user ?? null);
-        if (s?.user) {
-          await fetchProfile(s.user.id);
-        } else {
-          setProfile(null);
-          analytics.reset();
-        }
-        setLoading(false);
-      }
-    );
-
-    return () => subscription.unsubscribe();
+    const handleUrl = (url: string) => {
+      handleAuthLink(url).then((recovery) => { if (recovery && mounted) setPasswordRecovery(true); })
+        .catch(() => Alert.alert('Sign-in link', 'This link is invalid or expired. Request a new link.'));
+    };
+    const links = Linking.addEventListener('url', ({ url }) => handleUrl(url));
+    void Linking.getInitialURL().then((url) => { if (url && mounted) handleUrl(url); });
+    const appState = AppState.addEventListener('change', (state) => {
+      if (state === 'active') supabase.auth.startAutoRefresh();
+      else supabase.auth.stopAutoRefresh();
+    });
+    if (AppState.currentState === 'active') supabase.auth.startAutoRefresh();
+    return () => { mounted = false; activeUserId.current = null; subscription.unsubscribe(); links.remove(); appState.remove(); supabase.auth.stopAutoRefresh(); };
   }, [fetchProfile]);
 
   const signIn = useCallback(async (email: string, password: string) => {
@@ -103,6 +121,7 @@ export function useAuth(): AuthState & AuthActions {
         password,
         options: {
           data: { name: name.trim() },
+          emailRedirectTo: 'subly://auth/callback',
         },
       });
       if (signUpError) throw signUpError;
@@ -118,6 +137,7 @@ export function useAuth(): AuthState & AuthActions {
     setError(null);
     const { error: signOutError } = await supabase.auth.signOut();
     if (signOutError) throw signOutError;
+    await cancelAllTrialNotifications();
   }, []);
 
   const resetPassword = useCallback(async (email: string) => {
@@ -132,14 +152,17 @@ export function useAuth(): AuthState & AuthActions {
   const signInWithGoogle = useCallback(async () => {
     setError(null);
     try {
-      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: 'subly://auth/callback',
-          skipBrowserRedirect: false,
+          skipBrowserRedirect: true,
         },
       });
       if (oauthError) throw oauthError;
+      if (!data.url) throw new Error('Missing Google sign-in URL');
+      const response = await WebBrowser.openAuthSessionAsync(data.url, 'subly://auth/callback');
+      if (response.type === 'success') await handleAuthLink(response.url);
     } catch (e: any) {
       setError(e.message ?? 'Google sign in failed.');
       throw e;
@@ -150,11 +173,16 @@ export function useAuth(): AuthState & AuthActions {
     if (!user?.id) throw new Error('No authenticated user');
     setLoading(true);
     try {
-      // Clean up all user data
-      await supabase.from('trials').delete().eq('user_id', user.id);
-      await supabase.from('notification_preferences').delete().eq('user_id', user.id);
-      await supabase.from('profiles').delete().eq('id', user.id);
-      await supabase.auth.signOut();
+      // The server validates the caller and deletes auth.users; database cascades remove records.
+      const { data, error: deletionError } = await supabase.functions.invoke('delete-account', { body: {} });
+      if (deletionError || !data?.deleted) throw new Error('Account deletion failed. Please try again or contact support.');
+      await cancelAllTrialNotifications();
+      const { error: logoutError } = await supabase.auth.signOut({ scope: 'local' });
+      if (logoutError) console.warn('Local session cleanup failed after account deletion.');
+      activeUserId.current = null;
+      setSession(null);
+      setUser(null);
+      setProfile(null);
       analytics.track('account_deleted');
     } catch (e: any) {
       setError(e.message ?? 'Failed to delete account.');
@@ -171,6 +199,8 @@ export function useAuth(): AuthState & AuthActions {
   const clearError = useCallback(() => setError(null), []);
 
   return {
+    isPasswordRecovery,
+    completePasswordRecovery: () => setPasswordRecovery(false),
     session,
     user,
     profile,
@@ -185,4 +215,15 @@ export function useAuth(): AuthState & AuthActions {
     refreshProfile,
     clearError,
   };
+}
+
+const AuthContext = createContext<(AuthState & AuthActions) | null>(null);
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const auth = useAuthState();
+  return React.createElement(AuthContext.Provider, { value: auth }, children);
+}
+export function useAuth(): AuthState & AuthActions {
+  const auth = useContext(AuthContext);
+  if (!auth) throw new Error('useAuth must be used within AuthProvider');
+  return auth;
 }

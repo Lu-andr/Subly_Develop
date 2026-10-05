@@ -1,13 +1,13 @@
-// TrialGuard — Smart Confirmation Text & Receipt Parser
-// Extracts service name, trial duration, and price from email snippets or SMS alerts
-
-import { SERVICE_PRESETS, ServicePreset } from '../constants/servicePresets';
-import { BillingCycle } from '../types';
+// Parse only details present in user-pasted text. Presets identify services, not prices.
+import { SERVICE_PRESETS } from '../constants/servicePresets';
+import { BillingCycle, Currency } from '../types';
+import { parseCurrencyAmount } from './currencyUtils';
+import { parseLocalDate } from './dateUtils';
 
 export interface ParsedTrialInfo {
   serviceName?: string;
   chargeAmount?: number;
-  currency?: string;
+  currency?: Currency;
   trialDays?: number;
   endDate?: Date;
   billingCycle?: BillingCycle;
@@ -16,118 +16,47 @@ export interface ParsedTrialInfo {
 }
 
 export function parseTrialConfirmation(rawText: string): ParsedTrialInfo {
-  const notes: string[] = [];
   const text = rawText.trim();
   const lower = text.toLowerCase();
-
-  let matchedPreset: ServicePreset | undefined;
-  let serviceName: string | undefined;
-  let chargeAmount: number | undefined;
-  let currency = 'INR';
-  let trialDays: number | undefined;
-  let endDate: Date | undefined;
-  let billingCycle: BillingCycle = 'monthly';
-  let cancellationUrl: string | undefined;
-
-  // 1. Detect known service preset
-  for (const preset of SERVICE_PRESETS) {
-    const simpleName = preset.name.toLowerCase().split(' ')[0];
-    if (lower.includes(preset.name.toLowerCase()) || lower.includes(simpleName)) {
-      matchedPreset = preset;
-      serviceName = preset.name;
-      trialDays = preset.trialDays;
-      chargeAmount = preset.defaultPrice;
-      currency = preset.currency;
-      billingCycle = preset.billingCycle;
-      cancellationUrl = preset.cancellationUrl;
-      notes.push(`Detected service: ${preset.name}`);
-      break;
-    }
+  const result: ParsedTrialInfo = { confidenceNotes: [] };
+  const preset = SERVICE_PRESETS.find((p) => lower.includes(p.name.toLowerCase()) || lower.includes(p.name.toLowerCase().split(' ')[0]));
+  if (preset) {
+    result.serviceName = preset.name;
+    result.cancellationUrl = preset.cancellationUrl;
+  } else {
+    result.serviceName = text.match(/(?:welcome to|subscribed to|free trial of|membership for)\s+([A-Za-z0-9 &+.'-]+?)(?:!|\.|,| for | free|\n|$)/i)?.[1]?.trim();
   }
-
-  // If no preset matched, try regex for service name
-  if (!serviceName) {
-    const nameMatch = text.match(/(?:welcome to|subscribed to|free trial of|started your|membership for)\s+([A-Za-z0-9 &+.'-]+?)(?:\!|\.|\,| for | free|\n|$)/i);
-    if (nameMatch && nameMatch[1]) {
-      serviceName = nameMatch[1].trim();
-      notes.push(`Extracted name: ${serviceName}`);
-    }
+  const codes = 'RUB|KZT|UZS|VND|PHP|ZAR|INR|USD|EUR|GBP|AUD|CAD';
+  const number = '\\d+(?:[.,]\\d{1,2})?';
+  const after = text.match(new RegExp(`\\b(${number})\\s*(${codes})\\b`, 'i'));
+  const before = text.match(new RegExp(`\\b(${codes})\\s*(${number})\\b`, 'i'));
+  const symbol = text.match(new RegExp(`(₽|₸|₫|₱|₹|\\$|€|£|\\bR\\b|so[ʻ’']m)\\s*(${number})`, 'i'));
+  if (after || before) {
+    const match = (after ?? before)!;
+    result.currency = (after ? match[2] : match[1]).toUpperCase() as Currency;
+    result.chargeAmount = parseCurrencyAmount(after ? match[1] : match[2]);
+  } else if (symbol) {
+    const currencies: Record<string, Currency> = { '₽': 'RUB', '₸': 'KZT', '₫': 'VND', '₱': 'PHP', '₹': 'INR', '$': 'USD', '€': 'EUR', '£': 'GBP', R: 'ZAR' };
+    result.currency = currencies[symbol[1]] ?? (symbol[1].toLowerCase().startsWith('so') ? 'UZS' : undefined);
+    result.chargeAmount = parseCurrencyAmount(symbol[2]);
   }
-
-  // 2. Extract Price & Currency symbol (defaults to INR)
-  const priceRegex = /(₹|rs\.?|[$€£¥])\s*(\d+(?:\.\d{1,2})?)|(\d+(?:\.\d{1,2})?)\s*(?:INR|Rs|USD|EUR|GBP)/i;
-  const priceMatch = text.match(priceRegex);
-  if (priceMatch) {
-    if (priceMatch[1] && priceMatch[2]) {
-      const symbol = priceMatch[1].toLowerCase();
-      if (symbol === '₹' || symbol.startsWith('rs')) currency = 'INR';
-      else if (symbol === '$') currency = 'USD';
-      else if (symbol === '€') currency = 'EUR';
-      else if (symbol === '£') currency = 'GBP';
-      chargeAmount = parseFloat(priceMatch[2]);
-      notes.push(`Found price: ${symbol.toUpperCase()} ${chargeAmount}`);
-    } else if (priceMatch[3]) {
-      chargeAmount = parseFloat(priceMatch[3]);
-      notes.push(`Found price: ₹${chargeAmount}`);
-    }
+  if (result.chargeAmount !== undefined && !Number.isFinite(result.chargeAmount)) delete result.chargeAmount;
+  const duration = text.match(/(?:free trial(?:\s+of|\s+for)?\s+|)(\d+)\s*[- ]?(day|week|month)s?\s+(?:free|trial)/i)
+    ?? text.match(/free trial\s+(?:lasts|for)\s+(\d+)\s*(day|week|month)s?/i);
+  if (duration) {
+    result.trialDays = Number(duration[1]) * ({ day: 1, week: 7, month: 30 }[duration[2].toLowerCase()] ?? 1);
+    const date = new Date();
+    date.setDate(date.getDate() + result.trialDays);
+    result.endDate = date;
+    result.confidenceNotes.push('Duration estimated from pasted text; verify start and end dates.');
   }
-
-  // 3. Extract Trial Duration (days / weeks / months)
-  const daysMatch = text.match(/(\d+)\s*[- ]?(?:day|days|d)\b/i);
-  const weeksMatch = text.match(/(\d+)\s*[- ]?(?:week|weeks|wk)\b/i);
-  const monthsMatch = text.match(/(\d+)\s*[- ]?(?:month|months|mo)\b/i);
-
-  if (daysMatch && daysMatch[1]) {
-    trialDays = parseInt(daysMatch[1], 10);
-    notes.push(`Found ${trialDays}-day trial period`);
-  } else if (weeksMatch && weeksMatch[1]) {
-    trialDays = parseInt(weeksMatch[1], 10) * 7;
-    notes.push(`Found ${weeksMatch[1]}-week trial period (${trialDays} days)`);
-  } else if (monthsMatch && monthsMatch[1]) {
-    trialDays = parseInt(monthsMatch[1], 10) * 30;
-    notes.push(`Found ${monthsMatch[1]}-month trial period (${trialDays} days)`);
+  const date = text.match(/(?:ends? on|renews? on|first charge on|before|until)\s+(\d{4}-\d{2}-\d{2}|[A-Za-z]{3,9}\s+\d{1,2},?\s*\d{4})/i)?.[1];
+  if (date) {
+    const parsed = parseLocalDate(date);
+    if (Number.isFinite(parsed.getTime())) result.endDate = parsed;
   }
-
-  // If explicit date found (e.g. "ends on Oct 25, 2026")
-  const dateMatch = text.match(/(?:ends? on|renews? on|first charge on|before|until)\s+([A-Za-z]{3,9}\s+\d{1,2}(?:,?\s*\d{4})?|\d{1,2}[/-]\d{1,2}[/-]\d{2,4})/i);
-  if (dateMatch && dateMatch[1]) {
-    const parsed = new Date(dateMatch[1]);
-    if (!isNaN(parsed.getTime())) {
-      endDate = parsed;
-      notes.push(`Parsed explicit end date: ${dateMatch[1]}`);
-    }
-  }
-
-  // If we have trialDays but no explicit endDate, compute from today
-  if (trialDays && !endDate) {
-    const d = new Date();
-    d.setDate(d.getDate() + trialDays);
-    endDate = d;
-  }
-
-  // 4. Extract billing cycle
-  if (/year|annual|\/yr/i.test(lower)) {
-    billingCycle = 'yearly';
-  } else if (/week|\/wk/i.test(lower)) {
-    billingCycle = 'weekly';
-  } else if (/month|\/mo/i.test(lower)) {
-    billingCycle = 'monthly';
-  }
-
-  // 5. Extract URL if present
-  const urlMatch = text.match(/https?:\/\/[^\s"'<>]+/i);
-  if (urlMatch && !cancellationUrl) {
-    cancellationUrl = urlMatch[0];
-  }
-
-  return {
-    serviceName,
-    chargeAmount,
-    currency,
-    trialDays,
-    endDate,
-    billingCycle,
-    cancellationUrl,
-    confidenceNotes: notes,
-  };
+  if (/per year|annually|\/yr/i.test(text)) result.billingCycle = 'yearly';
+  else if (/per week|weekly|\/wk/i.test(text)) result.billingCycle = 'weekly';
+  else if (/per month|monthly|\/mo/i.test(text)) result.billingCycle = 'monthly';
+  return result;
 }

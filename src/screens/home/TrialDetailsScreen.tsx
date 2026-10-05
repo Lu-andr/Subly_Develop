@@ -74,7 +74,7 @@ export const TrialDetailsScreen: React.FC<TrialDetailsScreenProps> = ({
       case 'weekly': return amount * 52;
       case 'monthly': return amount * 12;
       case 'yearly': return amount;
-      case 'custom': return amount * 12;
+      case 'custom': return NaN;
       default: return amount * 12;
     }
   };
@@ -194,8 +194,8 @@ export const TrialDetailsScreen: React.FC<TrialDetailsScreenProps> = ({
                 </Text>
                 <View style={styles.countdownUnitCol}>
                   <Text style={[styles.countdownUnitTitle, { color: countdownColor }]}>
-                    {daysRemaining <= 0
-                      ? 'Expired'
+                    {daysRemaining === 0
+                      ? 'Ends today'
                       : daysRemaining === 1
                       ? 'Day Left'
                       : 'Days Remaining'}
@@ -237,7 +237,7 @@ export const TrialDetailsScreen: React.FC<TrialDetailsScreenProps> = ({
               <View style={styles.cancelledTextContainer}>
                 <Text style={styles.cancelledTitle}>Trial Cancelled</Text>
                 <Text style={styles.cancelledSub}>
-                  You won't be charged {formatCurrency(trial.charge_amount, trial.currency)}.
+                  Marked cancelled by you. Verify cancellation with the provider.
                 </Text>
               </View>
             </View>
@@ -266,7 +266,7 @@ export const TrialDetailsScreen: React.FC<TrialDetailsScreenProps> = ({
             <View style={styles.gridCard}>
               <Text style={styles.gridLabel}>Annual Estimate</Text>
               <Text style={styles.gridValue}>
-                {formatCurrency(annualCost, trial.currency)}
+                {Number.isFinite(annualCost) ? formatCurrency(annualCost, trial.currency) : 'Not available'}
               </Text>
               <Text style={styles.gridSub}>12-month commitment</Text>
             </View>
@@ -375,7 +375,7 @@ export const TrialDetailsScreen: React.FC<TrialDetailsScreenProps> = ({
       </ScrollView>
 
       {/* Cancellation Link Modal */}
-      <Modal visible={showCancelModal} transparent animationType="slide">
+      <Modal visible={showCancelModal} onRequestClose={() => setShowCancelModal(false)} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalSheet}>
             <View style={styles.modalHandle} />
@@ -409,7 +409,7 @@ export const TrialDetailsScreen: React.FC<TrialDetailsScreenProps> = ({
       </Modal>
 
       {/* Confirm Cancelled Modal */}
-      <Modal visible={showConfirmModal} transparent animationType="slide">
+      <Modal visible={showConfirmModal} onRequestClose={() => setShowConfirmModal(false)} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalSheet}>
             <View style={styles.modalHandle} />

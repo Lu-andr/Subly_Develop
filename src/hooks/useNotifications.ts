@@ -30,6 +30,11 @@ export function useNotificationPreferences(userId: string | null) {
       if (fetchError && fetchError.code !== 'PGRST116') throw fetchError;
       if (data) {
         setPrefs(data as NotificationPreferences);
+      } else {
+        const { data: inserted, error: insertError } = await supabase.from('notification_preferences')
+          .upsert({ user_id: userId, ...DEFAULT_PREFS }, { onConflict: 'user_id' }).select().single();
+        if (insertError) throw insertError;
+        setPrefs(inserted as NotificationPreferences);
       }
     } catch (e: any) {
       setError(e.message);

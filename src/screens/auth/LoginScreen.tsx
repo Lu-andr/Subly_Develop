@@ -167,7 +167,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         {/* Security Badge */}
         <View style={styles.securityRow}>
           <Ionicons name="lock-closed" size={13} color={colors.gray500} />
-          <Text style={styles.securityText}>Bank-grade encrypted & private</Text>
+          <Text style={styles.securityText}>Your records are linked to your account</Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

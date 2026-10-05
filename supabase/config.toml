@@ -1,0 +1,5 @@
+project_id = "subly"
+
+[functions.delete-account]
+# Keep JWT verification enabled. The function also validates the caller with getUser.
+verify_jwt = true

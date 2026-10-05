@@ -30,8 +30,7 @@ interface ProfileScreenProps {
   onNavigateNotifications: () => void;
 }
 
-const PRIVACY_URL = 'https://github.com/mayankbohara0-dev/Subly/blob/main/docs/PRIVACY_POLICY.md';
-const TERMS_URL = 'https://github.com/mayankbohara0-dev/Subly/blob/main/docs/TERMS.md';
+import { PRIVACY_URL, TERMS_URL, DELETION_URL, SUPPORT_EMAIL } from '../../constants/legal';
 
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   profile,
@@ -44,7 +43,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [signingOut, setSigningOut] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
 
-  const avatarLetter = (profile?.name ?? profile?.email ?? 'S')[0].toUpperCase();
+  const avatarLetter = (profile?.name || profile?.email || 'S')[0].toUpperCase();
 
   const handleSignOut = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -141,7 +140,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               <View>
                 <Text style={styles.rowLabel}>Reminder Schedules</Text>
                 <Text style={styles.rowSub}>
-                  {prefs.notifications_enabled ? '4 intervals active (7d, 3d, 1d, same-day)' : 'Alerts disabled'}
+                  {prefs.notifications_enabled ? `${[prefs.seven_days, prefs.three_days, prefs.one_day, prefs.final_day].filter(Boolean).length} reminder intervals enabled` : 'Alerts disabled'}
                 </Text>
               </View>
             </View>
@@ -188,12 +187,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             chevron
             onPress={() => Linking.openURL(TERMS_URL)}
           />
+          <SettingsRow icon="trash-outline" label="Account deletion help" chevron onPress={() => Linking.openURL(DELETION_URL)} />
           <SettingsRow
             icon="help-buoy-outline"
             label="Help & Support"
             chevron
             last
-            onPress={() => Linking.openURL('mailto:support@subly.app')}
+            onPress={() => SUPPORT_EMAIL ? Linking.openURL(`mailto:${SUPPORT_EMAIL}`) : Alert.alert('Support', 'Support contact has not been configured.')}
           />
         </View>
 

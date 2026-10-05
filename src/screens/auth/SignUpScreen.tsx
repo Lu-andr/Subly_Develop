@@ -41,7 +41,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({ onNavigateLogin }) =
     if (!email.trim()) errs.email = 'Email address is required.';
     else if (!/\S+@\S+\.\S+/.test(email)) errs.email = 'Enter a valid email.';
     if (!password) errs.password = 'Password is required.';
-    else if (password.length < 6) errs.password = 'Must be at least 6 characters.';
+    else if (password.length < 8) errs.password = 'Must be at least 8 characters.';
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -90,7 +90,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({ onNavigateLogin }) =
             interactive={true}
           />
           <Text style={styles.appName}>Create Your Account</Text>
-          <Text style={styles.subtitle}>Join thousands saving with Subly</Text>
+          <Text style={styles.subtitle}>Track your trials and upcoming charges</Text>
         </View>
 
         {/* Card Form */}
@@ -130,7 +130,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({ onNavigateLogin }) =
             label="PASSWORD"
             value={password}
             onChangeText={(t) => { setPassword(t); clearError(); }}
-            placeholder="Minimum 6 characters"
+            placeholder="Minimum 8 characters"
             secureTextEntry
             error={formErrors.password}
             returnKeyType="done"

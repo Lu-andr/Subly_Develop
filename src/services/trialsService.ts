@@ -1,4 +1,5 @@
 // TrialGuard — Trials Service (Supabase CRUD)
+import { parseCurrencyAmount } from '../utils/currencyUtils';
 import { supabase } from '../lib/supabase';
 import { Trial, TrialFormData, TrialStatus } from '../types';
 import { toISODateString, computeTrialStatus } from '../utils/dateUtils';
@@ -6,10 +7,11 @@ import { toISODateString, computeTrialStatus } from '../utils/dateUtils';
 /**
  * Fetch all trials for the current user.
  */
-export async function fetchTrials(): Promise<Trial[]> {
+export async function fetchTrials(userId: string): Promise<Trial[]> {
   const { data, error } = await supabase
     .from('trials')
     .select('*')
+    .eq('user_id', userId)
     .order('trial_end_date', { ascending: true });
 
   if (error) throw new Error(error.message);
@@ -50,12 +52,13 @@ export async function createTrial(
     service_logo: formData.service_logo?.trim() ?? null,
     trial_start_date: startDateStr,
     trial_end_date: endDateStr,
-    charge_amount: parseFloat(formData.charge_amount),
+    charge_amount: parseCurrencyAmount(formData.charge_amount),
     currency: formData.currency,
     billing_cycle: formData.billing_cycle,
     cancellation_url: formData.cancellation_url?.trim() || null,
     notes: formData.notes?.trim() || null,
     status,
+    cancelled_at: null,
   };
 
   const { data, error } = await supabase
@@ -84,12 +87,13 @@ export async function updateTrial(
     service_logo: formData.service_logo?.trim() ?? null,
     trial_start_date: startDateStr,
     trial_end_date: endDateStr,
-    charge_amount: parseFloat(formData.charge_amount),
+    charge_amount: parseCurrencyAmount(formData.charge_amount),
     currency: formData.currency,
     billing_cycle: formData.billing_cycle,
     cancellation_url: formData.cancellation_url?.trim() || null,
     notes: formData.notes?.trim() || null,
     status,
+    cancelled_at: null,
   };
 
   const { data, error } = await supabase

@@ -24,7 +24,8 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
   const badgeOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.sequence([
+    let finishTimer: ReturnType<typeof setTimeout> | undefined;
+    const animation = Animated.sequence([
       // Mascot spring in
       Animated.parallel([
         Animated.spring(mascotScale, {
@@ -59,10 +60,12 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
           useNativeDriver: true,
         }),
       ]),
-    ]).start(() => {
+    ]);
+    animation.start(({ finished }) => {
       // Complete splash after 1.8s
-      setTimeout(onFinish, 900);
+      if (finished) finishTimer = setTimeout(onFinish, 900);
     });
+    return () => { animation.stop(); if (finishTimer) clearTimeout(finishTimer); };
   }, [mascotScale, mascotOpacity, textOpacity, taglineOpacity, badgeOpacity, onFinish]);
 
   return (

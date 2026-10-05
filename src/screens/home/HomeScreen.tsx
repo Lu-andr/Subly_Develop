@@ -20,7 +20,7 @@ import { MoneyAtRiskCard } from '../../components/trial/MoneyAtRiskCard';
 import { ServiceIcon } from '../../components/ui/ServiceIcon';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { PageLoader } from '../../components/ui/LoadingScreen';
-import { formatCurrency, BILLING_CYCLE_LABELS } from '../../utils/currencyUtils';
+import { formatCurrency, formatCurrencyTotals, BILLING_CYCLE_LABELS } from '../../utils/currencyUtils';
 import { getGreeting, getDaysRemaining, formatDate } from '../../utils/dateUtils';
 import {
   getActiveTrials,
@@ -311,10 +311,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                       <Text style={styles.chargeTotalSub}>If not cancelled in time</Text>
                     </View>
                     <Text style={styles.chargeTotalAmount}>
-                      {formatCurrency(
-                        atRiskTrials.reduce((sum, t) => sum + t.charge_amount, 0),
-                        'INR'
-                      )}
+                      {formatCurrencyTotals(atRiskTrials)}
                     </Text>
                   </View>
                 </View>

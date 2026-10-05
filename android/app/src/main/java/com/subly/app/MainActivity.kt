@@ -1,4 +1,4 @@
-package com.trialguard.app
+package com.subly.app
 
 import android.os.Build
 import android.os.Bundle
