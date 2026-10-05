@@ -3,6 +3,13 @@
 import { Currency } from '../types';
 
 export const CURRENCY_SYMBOLS: Record<Currency, string> = {
+  RUB: '₽',
+  KZT: '₸',
+  UZS: 'soʻm',
+  VND: '₫',
+  PHP: '₱',
+  ZAR: 'R',
+  // Retain symbols for previously saved records and existing service presets.
   INR: '₹',
   USD: '$',
   EUR: '€',
@@ -12,24 +19,34 @@ export const CURRENCY_SYMBOLS: Record<Currency, string> = {
 };
 
 export const CURRENCY_OPTIONS: { label: string; value: Currency }[] = [
-  { label: '₹ Indian Rupee (INR)', value: 'INR' },
-  { label: '$ US Dollar (USD)', value: 'USD' },
-  { label: '€ Euro (EUR)', value: 'EUR' },
-  { label: '£ British Pound (GBP)', value: 'GBP' },
-  { label: 'A$ Australian Dollar (AUD)', value: 'AUD' },
-  { label: 'C$ Canadian Dollar (CAD)', value: 'CAD' },
+  { label: '₽ Российский рубль (RUB)', value: 'RUB' },
+  { label: '₸ Казахский тенге (KZT)', value: 'KZT' },
+  { label: 'soʻm Узбекский сом (UZS)', value: 'UZS' },
+  { label: '₫ Вьетнамский донг (VND)', value: 'VND' },
+  { label: '₱ Филиппинское песо (PHP)', value: 'PHP' },
+  { label: 'R Южноафриканский рэнд (ZAR)', value: 'ZAR' },
 ];
+
+const CURRENCY_LOCALES: Partial<Record<Currency, string>> = {
+  RUB: 'ru-RU',
+  KZT: 'kk-KZ',
+  UZS: 'uz-UZ',
+  VND: 'vi-VN',
+  PHP: 'en-PH',
+  ZAR: 'en-ZA',
+};
 
 /**
  * Format a charge amount with currency symbol.
- * e.g. formatCurrency(119, 'INR') → "₹119"
+ * e.g. formatCurrency(119, 'RUB') → "₽119"
  */
-export function formatCurrency(amount: number, currency: Currency = 'INR'): string {
+export function formatCurrency(amount: number, currency: Currency = 'ZAR'): string {
   const symbol = CURRENCY_SYMBOLS[currency] ?? currency;
+  const locale = CURRENCY_LOCALES[currency] ?? 'en-IN';
   if (Number.isInteger(amount)) {
-    return `${symbol}${amount.toLocaleString('en-IN')}`;
+    return `${symbol}${amount.toLocaleString(locale)}`;
   }
-  return `${symbol}${amount.toLocaleString('en-IN', {
+  return `${symbol}${amount.toLocaleString(locale, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;

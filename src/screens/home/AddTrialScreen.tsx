@@ -70,7 +70,7 @@ export const AddTrialScreen: React.FC<AddTrialScreenProps> = ({
   const [chargeAmount, setChargeAmount] = useState(
     existingTrial ? String(existingTrial.charge_amount) : ''
   );
-  const [currency, setCurrency] = useState<Currency>(existingTrial?.currency ?? 'INR');
+  const [currency, setCurrency] = useState<Currency>(existingTrial?.currency ?? 'ZAR');
   const [billingCycle, setBillingCycle] = useState<BillingCycle>(
     existingTrial?.billing_cycle ?? 'monthly'
   );

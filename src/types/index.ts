@@ -4,7 +4,9 @@ export type TrialStatus = 'ACTIVE' | 'EXPIRING_SOON' | 'EXPIRED' | 'CANCELLED';
 
 export type BillingCycle = 'weekly' | 'monthly' | 'yearly' | 'custom';
 
-export type Currency = 'INR' | 'USD' | 'EUR' | 'GBP' | 'AUD' | 'CAD';
+// Legacy codes remain valid for existing records; selectable currencies are in currencyUtils.ts.
+export type Currency = 'RUB' | 'KZT' | 'UZS' | 'VND' | 'PHP' | 'ZAR'
+  | 'INR' | 'USD' | 'EUR' | 'GBP' | 'AUD' | 'CAD';
 
 export interface Trial {
   id: string;

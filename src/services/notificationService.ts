@@ -2,6 +2,7 @@
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { Trial, NotificationPreferences } from '../types';
+import { formatCurrency } from '../utils/currencyUtils';
 
 export interface NotificationScheduleResult {
   scheduled: number;
@@ -115,8 +116,7 @@ export async function scheduleTrialReminders(
     const trialEndDate = new Date(year, month - 1, day, 9, 0, 0); // 9:00 AM local time
     const now = new Date();
 
-    const currencySymbol = trial.currency === 'INR' ? '₹' : '$';
-    const amountStr = `${currencySymbol}${trial.charge_amount}`;
+    const amountStr = formatCurrency(trial.charge_amount, trial.currency);
 
     // Define reminder schedule intervals
     const intervals: { daysBefore: number; enabled: boolean; title: string; body: string }[] = [
