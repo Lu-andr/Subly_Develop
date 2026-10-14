@@ -1,9 +1,9 @@
 // TrialGuard — Trials Hook
 import { useState, useEffect, useCallback } from 'react';
+import { AppState } from 'react-native';
 import { Trial, NotificationPreferences } from '../types';
 import {
   fetchTrials,
-  fetchTrialById,
   createTrial,
   updateTrial,
   markTrialCancelled,
@@ -12,7 +12,6 @@ import {
 } from '../services/trialsService';
 import { TrialFormData } from '../types';
 import {
-  scheduleTrialReminders,
   cancelTrialNotifications,
 } from '../services/notificationService';
 import { getDaysRemaining, computeTrialStatus } from '../utils/dateUtils';
@@ -51,7 +50,7 @@ export function useTrials(userId: string | null): UseTrialsState & UseTrialsActi
 
     try {
       // Direct 1-roundtrip fetch for instant UI load
-      const data = await fetchTrials();
+      const data = await fetchTrials(userId);
       const freshData = data.map((t) => {
         const currentStatus = computeTrialStatus(t.trial_end_date, t.cancelled_at);
         return currentStatus !== t.status ? { ...t, status: currentStatus } : t;
@@ -70,7 +69,9 @@ export function useTrials(userId: string | null): UseTrialsState & UseTrialsActi
   }, [userId]);
 
   useEffect(() => {
-    load();
+    void load();
+    const subscription = AppState.addEventListener('change', (state) => { if (state === 'active') void load(true); });
+    return () => subscription.remove();
   }, [load]);
 
   const refresh = useCallback(() => load(true), [load]);
@@ -81,7 +82,6 @@ export function useTrials(userId: string | null): UseTrialsState & UseTrialsActi
   ): Promise<Trial> => {
     if (!userId) throw new Error('Not authenticated');
     const trial = await createTrial(userId, formData);
-    await scheduleTrialReminders(trial, prefs);
     setTrials((prev) => [...prev, trial].sort(
       (a, b) => new Date(a.trial_end_date).getTime() - new Date(b.trial_end_date).getTime()
     ));
@@ -96,7 +96,6 @@ export function useTrials(userId: string | null): UseTrialsState & UseTrialsActi
     const updated = await updateTrial(id, formData);
     // Cancel old notifications and reschedule
     await cancelTrialNotifications(id);
-    await scheduleTrialReminders(updated, prefs);
     setTrials((prev) =>
       prev.map((t) => (t.id === id ? updated : t))
         .sort((a, b) => new Date(a.trial_end_date).getTime() - new Date(b.trial_end_date).getTime())

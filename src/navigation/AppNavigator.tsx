@@ -1,6 +1,6 @@
 // TrialGuard — App Navigator (Bottom Tabs + Home Stack)
-import React, { useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Platform } from 'react-native';
+import React, { useState, useCallback, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Platform, Alert } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,6 +21,7 @@ import { ProfileScreen } from '../screens/profile/ProfileScreen';
 import { NotificationSettingsScreen } from '../screens/profile/NotificationSettingsScreen';
 
 // Hooks
+import { syncTrialNotifications, requestNotificationPermissions } from '../services/notificationService';
 import { useTrials } from '../hooks/useTrials';
 import { useNotificationPreferences } from '../hooks/useNotifications';
 
@@ -100,7 +101,7 @@ const HomeStackNavigator: React.FC<HomeStackNavigatorProps> = ({
       </HomeStack.Navigator>
 
       {/* Add Trial Modal */}
-      <Modal visible={showAddModal} animationType="slide" presentationStyle="pageSheet">
+      <Modal visible={showAddModal} onRequestClose={() => setShowAddModal(false)} animationType="slide" presentationStyle="pageSheet">
         <AddTrialScreen
           onSave={async (data) => {
             await onAddTrial(data);
@@ -111,7 +112,7 @@ const HomeStackNavigator: React.FC<HomeStackNavigatorProps> = ({
       </Modal>
 
       {/* Edit Trial Modal */}
-      <Modal visible={!!editingTrial} animationType="slide" presentationStyle="pageSheet">
+      <Modal visible={!!editingTrial} onRequestClose={() => setEditingTrial(null)} animationType="slide" presentationStyle="pageSheet">
         {editingTrial && (
           <AddTrialScreen
             existingTrial={editingTrial}
@@ -132,12 +133,11 @@ interface ProfileStackNavigatorProps {
   profile: Profile | null;
   prefs: NotificationPreferences;
   onUpdatePrefs: (updates: Partial<NotificationPreferences>) => Promise<void>;
-  onSignOut: () => Promise<void>;
-  onDeleteAccount: () => Promise<void>;
+  onClearData: () => Promise<void>;
 }
 
 const ProfileStackNavigator: React.FC<ProfileStackNavigatorProps> = ({
-  profile, prefs, onUpdatePrefs, onSignOut, onDeleteAccount,
+  profile, prefs, onUpdatePrefs, onClearData,
 }) => {
   return (
     <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
@@ -147,8 +147,7 @@ const ProfileStackNavigator: React.FC<ProfileStackNavigatorProps> = ({
             profile={profile}
             prefs={prefs}
             onUpdatePrefs={onUpdatePrefs}
-            onSignOut={onSignOut}
-            onDeleteAccount={onDeleteAccount}
+            onClearData={onClearData}
             onNavigateNotifications={() => navigation.navigate('NotificationSettings')}
           />
         )}
@@ -170,15 +169,17 @@ const ProfileStackNavigator: React.FC<ProfileStackNavigatorProps> = ({
 interface AppNavigatorProps {
   userId: string;
   profile: Profile | null;
-  onSignOut: () => Promise<void>;
-  onDeleteAccount: () => Promise<void>;
+  onClearData: () => Promise<void>;
+  notificationTrialId: string | null;
+  onNotificationHandled: () => void;
 }
 
 export const AppNavigator: React.FC<AppNavigatorProps> = ({
   userId,
   profile,
-  onSignOut,
-  onDeleteAccount,
+  onClearData,
+  notificationTrialId,
+  onNotificationHandled,
 }) => {
   const {
     trials,
@@ -189,18 +190,44 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({
     editTrial,
     cancelTrial,
     removeTrial,
+    error: trialsError,
   } = useTrials(userId);
 
   const {
     prefs,
     updatePrefs,
+    loading: prefsLoading,
+    error: prefsError,
   } = useNotificationPreferences(userId);
 
   // Modals for Trials + History tabs
   const [showAddFromTrials, setShowAddFromTrials] = useState(false);
+  const [permissionReady, setPermissionReady] = useState(false);
+  const [notificationEditing, setNotificationEditing] = useState<Trial | null>(null);
+  const [notificationTrial, setNotificationTrial] = useState<Trial | null>(null);
   const [selectedTrial, setSelectedTrial] = useState<Trial | null>(null);
   const [selectedHistory, setSelectedHistory] = useState<Trial | null>(null);
   const [editingFromHistory, setEditingFromHistory] = useState<Trial | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setPermissionReady(false);
+    requestNotificationPermissions().finally(() => { if (active) setPermissionReady(true); });
+    return () => { active = false; };
+  }, [userId]);
+  useEffect(() => {
+    if (!permissionReady || loading || prefsLoading || trialsError || prefsError) return;
+    syncTrialNotifications(trials, prefs).catch((error) => Alert.alert('Reminders', error.message));
+  }, [trials, prefs, loading, prefsLoading, trialsError, prefsError, permissionReady]);
+  useEffect(() => {
+    if (trialsError || prefsError) Alert.alert('Unable to load data', trialsError ?? prefsError ?? 'Please try again.');
+  }, [trialsError, prefsError]);
+  useEffect(() => {
+    if (!notificationTrialId || loading) return;
+    const trial = trials.find((t) => t.id === notificationTrialId);
+    if (trial) setNotificationTrial(trial);
+    onNotificationHandled();
+  }, [notificationTrialId, trials, loading, onNotificationHandled]);
 
   const handleAddTrial = useCallback(
     async (data: TrialFormData) => addTrial(data, prefs),
@@ -214,6 +241,17 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({
 
   return (
     <>
+      <Modal visible={!!notificationTrial} animationType="slide" onRequestClose={() => setNotificationTrial(null)}>
+        {notificationTrial && <TrialDetailsScreen trial={trials.find((t) => t.id === notificationTrial.id) ?? notificationTrial}
+          onBack={() => setNotificationTrial(null)} onEdit={() => { setNotificationEditing(notificationTrial); setNotificationTrial(null); }}
+          onDelete={async () => { await removeTrial(notificationTrial.id); setNotificationTrial(null); }}
+          onMarkCancelled={async () => { await cancelTrial(notificationTrial.id); }} />}
+      </Modal>
+      <Modal visible={!!notificationEditing} animationType="slide" onRequestClose={() => setNotificationEditing(null)}>
+        {notificationEditing && <AddTrialScreen existingTrial={notificationEditing}
+          onSave={async (data) => { await handleEditTrial(notificationEditing.id, data); setNotificationEditing(null); }}
+          onCancel={() => setNotificationEditing(null)} />}
+      </Modal>
       <Tab.Navigator
         screenOptions={{
           headerShown: false,
@@ -277,7 +315,7 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({
                 onViewTrial={(t) => setSelectedTrial(t)}
               />
               <Modal
-                visible={showAddFromTrials}
+                visible={showAddFromTrials} onRequestClose={() => setShowAddFromTrials(false)}
                 animationType="slide"
                 presentationStyle="pageSheet"
               >
@@ -290,7 +328,7 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({
                 />
               </Modal>
               <Modal
-                visible={!!selectedTrial}
+                visible={!!selectedTrial} onRequestClose={() => setSelectedTrial(null)}
                 animationType="slide"
                 presentationStyle="pageSheet"
               >
@@ -316,7 +354,7 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({
                 )}
               </Modal>
               <Modal
-                visible={!!editingFromHistory}
+                visible={!!editingFromHistory} onRequestClose={() => setEditingFromHistory(null)}
                 animationType="slide"
                 presentationStyle="pageSheet"
               >
@@ -356,7 +394,7 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({
                 onViewTrial={(t) => setSelectedHistory(t)}
               />
                 <Modal
-                  visible={!!selectedHistory}
+                  visible={!!selectedHistory} onRequestClose={() => setSelectedHistory(null)}
                   animationType="slide"
                   presentationStyle="pageSheet"
                 >
@@ -385,7 +423,7 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({
         <Tab.Screen
           name="ProfileTab"
           options={{
-            tabBarLabel: 'Profile',
+            tabBarLabel: 'Settings',
             tabBarIcon: ({ color, focused }) => (
               <Ionicons
                 name={focused ? 'person' : 'person-outline'}
@@ -400,8 +438,7 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({
               profile={profile}
               prefs={prefs}
               onUpdatePrefs={updatePrefs}
-              onSignOut={onSignOut}
-              onDeleteAccount={onDeleteAccount}
+                onClearData={onClearData}
             />
           )}
         </Tab.Screen>

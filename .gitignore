@@ -18,3 +18,8 @@ web-build/
 *.env.production
 scratch/
 *.apk
+
+!.env.example
+
+/dist-audit/
+/dist-web-audit/

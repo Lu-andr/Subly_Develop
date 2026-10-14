@@ -19,7 +19,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { ServiceIcon } from '../../components/ui/ServiceIcon';
 import { PageLoader } from '../../components/ui/LoadingScreen';
 import { formatDate } from '../../utils/dateUtils';
-import { formatCurrency, BILLING_CYCLE_LABELS } from '../../utils/currencyUtils';
+import { formatCurrency, formatCurrencyTotals, BILLING_CYCLE_LABELS } from '../../utils/currencyUtils';
 import { getHistoryTrials } from '../../hooks/useTrials';
 
 interface HistoryScreenProps {
@@ -76,7 +76,7 @@ const HistoryCard: React.FC<{ trial: Trial; onPress: () => void }> = ({
         {isCancelled && (
           <View style={styles.savingsTag}>
             <Text style={styles.savingsTagText}>
-              💰 Saved {formatCurrency(trial.charge_amount, trial.currency)}
+              Marked cancelled: {formatCurrency(trial.charge_amount, trial.currency)}
             </Text>
           </View>
         )}
@@ -97,9 +97,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
 
   // Calculate cumulative money saved from cancellations
   const totalSaved = useMemo(() => {
-    return history
-      .filter((t) => t.status === 'CANCELLED')
-      .reduce((sum, t) => sum + t.charge_amount, 0);
+    return formatCurrencyTotals(history.filter((t) => t.status === 'CANCELLED'));
   }, [history]);
 
   if (loading) return <PageLoader message="Loading history..." />;
@@ -126,18 +124,18 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
           history.length > 0 ? (
             <View style={styles.headerContainer}>
               {/* Money Saved Hero Card */}
-              {totalSaved > 0 && (
+              {cancelledCount > 0 && (
                 <View style={styles.savedCard}>
                   <View style={styles.savedIconCircle}>
                     <Ionicons name="sparkles" size={24} color={colors.success} />
                   </View>
                   <View style={styles.savedContent}>
-                    <Text style={styles.savedLabel}>TOTAL MONEY SAVED</Text>
+                    <Text style={styles.savedLabel}>MARKED CANCELLED</Text>
                     <Text style={styles.savedAmount}>
-                      {formatCurrency(totalSaved, 'INR')}
+                      {totalSaved}
                     </Text>
                     <Text style={styles.savedSubtitle}>
-                      Prevented from unwanted auto-renewals
+                      Amounts recorded by you; cancellation is not verified
                     </Text>
                   </View>
                 </View>
@@ -147,7 +145,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
               <View style={styles.statsCard}>
                 <View style={styles.statItem}>
                   <Text style={styles.statNumber}>{cancelledCount}</Text>
-                  <Text style={styles.statLabel}>Cancelled in Time</Text>
+                  <Text style={styles.statLabel}>Marked cancelled</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>

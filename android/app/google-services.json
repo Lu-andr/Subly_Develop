@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "722822725006",
+    "project_id": "firestore-lesson-f820f",
+    "storage_bucket": "firestore-lesson-f820f.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:722822725006:android:ea2d0694e6a18f980d38df",
+        "android_client_info": {
+          "package_name": "com.subly.smartfinance"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBpMyGHj8wokRef9k7p68asTkg_vn4btk0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,161 +1,48 @@
-// TrialGuard — Trials Service (Supabase CRUD)
-import { supabase } from '../lib/supabase';
-import { Trial, TrialFormData, TrialStatus } from '../types';
+import { parseCurrencyAmount } from '../utils/currencyUtils';
+import { Trial, TrialFormData } from '../types';
 import { toISODateString, computeTrialStatus } from '../utils/dateUtils';
-
-/**
- * Fetch all trials for the current user.
- */
-export async function fetchTrials(): Promise<Trial[]> {
-  const { data, error } = await supabase
-    .from('trials')
-    .select('*')
-    .order('trial_end_date', { ascending: true });
-
-  if (error) throw new Error(error.message);
-  return (data ?? []) as Trial[];
+import { readLocalData, updateLocalData } from './localStore';
+function fields(form: TrialFormData) {
+  const end = toISODateString(form.trial_end_date);
+  return { service_name: form.service_name.trim(), service_logo: form.service_logo?.trim() || null,
+    trial_start_date: toISODateString(form.trial_start_date), trial_end_date: end,
+    charge_amount: parseCurrencyAmount(form.charge_amount), currency: form.currency,
+    billing_cycle: form.billing_cycle, cancellation_url: form.cancellation_url?.trim() || null,
+    notes: form.notes?.trim() || null, status: computeTrialStatus(end), cancelled_at: null };
 }
-
-/**
- * Fetch a single trial by ID.
- */
+export async function fetchTrials(userId: string): Promise<Trial[]> {
+  return (await readLocalData()).trials.filter(t => t.user_id === userId).sort((a,b)=>a.trial_end_date.localeCompare(b.trial_end_date));
+}
 export async function fetchTrialById(id: string): Promise<Trial | null> {
-  const { data, error } = await supabase
-    .from('trials')
-    .select('*')
-    .eq('id', id)
-    .single();
-
-  if (error) {
-    if (error.code === 'PGRST116') return null; // not found
-    throw new Error(error.message);
-  }
-  return data as Trial;
+  return (await readLocalData()).trials.find(t => t.id === id) ?? null;
 }
-
-/**
- * Create a new trial.
- */
-export async function createTrial(
-  userId: string,
-  formData: TrialFormData
-): Promise<Trial> {
-  const startDateStr = toISODateString(formData.trial_start_date);
-  const endDateStr = toISODateString(formData.trial_end_date);
-  const status = computeTrialStatus(endDateStr);
-
-  const insertData = {
-    user_id: userId,
-    service_name: formData.service_name.trim(),
-    service_logo: formData.service_logo?.trim() ?? null,
-    trial_start_date: startDateStr,
-    trial_end_date: endDateStr,
-    charge_amount: parseFloat(formData.charge_amount),
-    currency: formData.currency,
-    billing_cycle: formData.billing_cycle,
-    cancellation_url: formData.cancellation_url?.trim() || null,
-    notes: formData.notes?.trim() || null,
-    status,
-  };
-
-  const { data, error } = await supabase
-    .from('trials')
-    .insert(insertData)
-    .select()
-    .single();
-
-  if (error) throw new Error(error.message);
-  return data as Trial;
+export function createTrial(userId: string, form: TrialFormData): Promise<Trial> {
+  return updateLocalData(data => {
+    const now = new Date().toISOString();
+    const trial: Trial = { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, user_id: userId,
+      ...fields(form), created_at: now, updated_at: now };
+    data.trials.push(trial); return trial;
+  });
 }
-
-/**
- * Update an existing trial.
- */
-export async function updateTrial(
-  id: string,
-  formData: TrialFormData
-): Promise<Trial> {
-  const startDateStr = toISODateString(formData.trial_start_date);
-  const endDateStr = toISODateString(formData.trial_end_date);
-  const status = computeTrialStatus(endDateStr);
-
-  const updateData = {
-    service_name: formData.service_name.trim(),
-    service_logo: formData.service_logo?.trim() ?? null,
-    trial_start_date: startDateStr,
-    trial_end_date: endDateStr,
-    charge_amount: parseFloat(formData.charge_amount),
-    currency: formData.currency,
-    billing_cycle: formData.billing_cycle,
-    cancellation_url: formData.cancellation_url?.trim() || null,
-    notes: formData.notes?.trim() || null,
-    status,
-  };
-
-  const { data, error } = await supabase
-    .from('trials')
-    .update(updateData)
-    .eq('id', id)
-    .select()
-    .single();
-
-  if (error) throw new Error(error.message);
-  return data as Trial;
+export function updateTrial(id: string, form: TrialFormData): Promise<Trial> {
+  return updateLocalData(data => {
+    const index = data.trials.findIndex(t => t.id === id);
+    if (index < 0) throw new Error('Record not found.');
+    return data.trials[index] = { ...data.trials[index], ...fields(form), updated_at: new Date().toISOString() };
+  });
 }
-
-/**
- * Mark a trial as cancelled.
- */
-export async function markTrialCancelled(id: string): Promise<Trial> {
-  const { data, error } = await supabase
-    .from('trials')
-    .update({
-      status: 'CANCELLED' as TrialStatus,
-      cancelled_at: new Date().toISOString(),
-    })
-    .eq('id', id)
-    .select()
-    .single();
-
-  if (error) throw new Error(error.message);
-  return data as Trial;
+export function markTrialCancelled(id: string): Promise<Trial> {
+  return updateLocalData(data => {
+    const t = data.trials.find(t => t.id === id);
+    if (!t) throw new Error('Record not found.');
+    t.status = 'CANCELLED'; t.cancelled_at = new Date().toISOString(); t.updated_at = t.cancelled_at; return t;
+  });
 }
-
-/**
- * Delete a trial permanently.
- */
-export async function deleteTrial(id: string): Promise<void> {
-  const { error } = await supabase.from('trials').delete().eq('id', id);
-  if (error) throw new Error(error.message);
+export function deleteTrial(id: string): Promise<void> {
+  return updateLocalData(data => { data.trials = data.trials.filter(t => t.id !== id); });
 }
-
-/**
- * Recompute and update statuses for all active/expiring trials.
- * Call this on app foreground to keep statuses accurate.
- */
-export async function refreshTrialStatuses(userId: string): Promise<void> {
-  const { data, error } = await supabase
-    .from('trials')
-    .select('id, trial_end_date, cancelled_at, status')
-    .eq('user_id', userId)
-    .not('status', 'in', '("CANCELLED","EXPIRED")');
-
-  if (error || !data) return;
-
-  const updates = data
-    .map((trial) => {
-      const newStatus = computeTrialStatus(trial.trial_end_date, trial.cancelled_at);
-      if (newStatus !== trial.status) {
-        return { id: trial.id, status: newStatus };
-      }
-      return null;
-    })
-    .filter(Boolean) as { id: string; status: TrialStatus }[];
-
-  // Batch update in parallel
-  await Promise.all(
-    updates.map((u) =>
-      supabase.from('trials').update({ status: u.status }).eq('id', u.id)
-    )
-  );
+export function refreshTrialStatuses(userId: string): Promise<void> {
+  return updateLocalData(data => {
+    for (const t of data.trials) if (t.user_id === userId) t.status = computeTrialStatus(t.trial_end_date, t.cancelled_at);
+  });
 }

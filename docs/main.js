@@ -3,8 +3,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initMascotParallax();
   initMascotQuotes();
   initMascotClickEffect();
-  renderQrCode();
-  initSavingsCounter();
   initMobileStickyBar();
 });
 
@@ -79,7 +77,7 @@ function initMascotQuotes() {
   const quotes = [
     'I guard your wallet! 🛡️',
     'Never get charged by surprise! 🔥',
-    '1-Tap and it\'s cancelled! ⚡',
+    'Open the provider cancellation page! ⚡',
     'Download the APK below! 📱',
     'Smart 9:00 AM alarms ready! ⏰',
     'No bank passwords needed! 🔒',
@@ -189,11 +187,11 @@ window.simulateCancel = function(button, serviceName) {
   
   const statusEl = item.querySelector('.trial-status');
   if (statusEl) {
-    statusEl.textContent = 'Cancelled & Protected ✓';
+    statusEl.textContent = 'Demo: marked cancelled';
     statusEl.className = 'trial-status normal';
   }
 
-  button.textContent = 'Cancelled';
+  button.textContent = 'Demo only';
   button.disabled = true;
   button.style.background = '#10B981';
   button.style.borderColor = '#10B981';
@@ -215,70 +213,6 @@ window.simulateCancel = function(button, serviceName) {
     }
   }
 };
-
-// ── 5. Render Standalone Crisp QR Code on Canvas ────────
-function renderQrCode() {
-  const canvas = document.getElementById('qrCanvas');
-  if (!canvas) return;
-
-  const ctx = canvas.getContext('2d');
-  const size = 160;
-  const modules = 25; // 25x25 grid
-  const cellSize = size / modules;
-
-  // Deterministic pattern matching the direct download link
-  ctx.fillStyle = '#FFFFFF';
-  ctx.fillRect(0, 0, size, size);
-
-  ctx.fillStyle = '#0F172A';
-
-  // Corner Position Detection Markers
-  function drawFinderPattern(x, y) {
-    // 7x7 outer
-    ctx.fillRect(x * cellSize, y * cellSize, 7 * cellSize, 7 * cellSize);
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect((x + 1) * cellSize, (y + 1) * cellSize, 5 * cellSize, 5 * cellSize);
-    ctx.fillStyle = '#FF6B00';
-    ctx.fillRect((x + 2) * cellSize, (y + 2) * cellSize, 3 * cellSize, 3 * cellSize);
-    ctx.fillStyle = '#0F172A';
-  }
-
-  drawFinderPattern(1, 1);
-  drawFinderPattern(modules - 8, 1);
-  drawFinderPattern(1, modules - 8);
-
-  // Decorative inner data modules
-  const seed = 133742;
-  for (let r = 0; r < modules; r++) {
-    for (let c = 0; c < modules; c++) {
-      // Skip finder areas
-      if ((r <= 8 && c <= 8) || (r <= 8 && c >= modules - 9) || (r >= modules - 9 && c <= 8)) {
-        continue;
-      }
-      // Pseudo-random but deterministic data bits
-      const val = Math.sin(r * 12.9898 + c * 78.233 + seed) * 43758.5453;
-      if (val - Math.floor(val) > 0.52) {
-        ctx.fillRect(c * cellSize, r * cellSize, cellSize - 0.4, cellSize - 0.4);
-      }
-    }
-  }
-
-  // Draw small center orange dot
-  ctx.fillStyle = '#FF6B00';
-  ctx.fillRect(11 * cellSize, 11 * cellSize, 3 * cellSize, 3 * cellSize);
-}
-
-// ── 6. Animated Savings Counter on Mascot Card ──────────
-function initSavingsCounter() {
-  const el = document.getElementById('savingsCounter');
-  if (!el) return;
-
-  let baseSavings = 12450;
-  setInterval(() => {
-    baseSavings += Math.floor(Math.random() * 150) + 50;
-    el.textContent = `₹${baseSavings.toLocaleString()}+ Saved`;
-  }, 4000);
-}
 
 // ── 7. Mobile Sticky Download Bar Controller ────────────
 function initMobileStickyBar() {

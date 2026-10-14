@@ -1,7 +1,7 @@
 // TrialGuard — Notification Preferences Hook
 import { useState, useEffect, useCallback } from 'react';
 import { NotificationPreferences } from '../types';
-import { supabase } from '../lib/supabase';
+import { updateLocalData } from '../services/localStore';
 
 const DEFAULT_PREFS: Omit<NotificationPreferences, 'id' | 'user_id' | 'created_at' | 'updated_at'> = {
   notifications_enabled: true,
@@ -21,16 +21,15 @@ export function useNotificationPreferences(userId: string | null) {
     if (!userId) return;
     setLoading(true);
     try {
-      const { data, error: fetchError } = await supabase
-        .from('notification_preferences')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
-
-      if (fetchError && fetchError.code !== 'PGRST116') throw fetchError;
-      if (data) {
-        setPrefs(data as NotificationPreferences);
-      }
+      const data = await updateLocalData((store) => {
+        if (!store.preferences) {
+          const now = new Date().toISOString();
+          store.preferences = { id: 'local-preferences', user_id: userId, created_at: now, updated_at: now, ...DEFAULT_PREFS };
+        }
+        return store.preferences;
+      });
+      setPrefs(data);
+      setError(null);
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -47,15 +46,14 @@ export function useNotificationPreferences(userId: string | null) {
       if (!userId) return;
       setSaving(true);
       try {
-        const { data, error: updateError } = await supabase
-          .from('notification_preferences')
-          .update(updates)
-          .eq('user_id', userId)
-          .select()
-          .single();
-
-        if (updateError) throw updateError;
-        setPrefs(data as NotificationPreferences);
+        const data = await updateLocalData((store) => {
+          const now = new Date().toISOString();
+          const previous = store.preferences ?? { id: 'local-preferences', user_id: userId, created_at: now, updated_at: now, ...DEFAULT_PREFS };
+          store.preferences = { ...previous, ...updates, updated_at: now };
+          return store.preferences;
+        });
+        setPrefs(data);
+        setError(null);
       } catch (e: any) {
         setError(e.message ?? 'Failed to save preferences.');
         throw e;

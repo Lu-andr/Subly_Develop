@@ -1,3 +1,4 @@
+import { parseCurrencyAmount } from './currencyUtils';
 // TrialGuard — Validation Utilities
 
 /**
@@ -29,11 +30,11 @@ export function validateTrialForm(data: {
   }
 
   // Dates
-  if (!data.trial_start_date) {
+  if (!data.trial_start_date || !Number.isFinite(data.trial_start_date.getTime())) {
     errors.trial_start_date = 'Start date is required.';
   }
 
-  if (!data.trial_end_date) {
+  if (!data.trial_end_date || !Number.isFinite(data.trial_end_date.getTime())) {
     errors.trial_end_date = 'End date is required.';
   } else if (
     data.trial_start_date &&
@@ -43,7 +44,7 @@ export function validateTrialForm(data: {
   }
 
   // Charge amount
-  const amount = parseFloat(data.charge_amount);
+  const amount = parseCurrencyAmount(data.charge_amount);
   if (!data.charge_amount || data.charge_amount.trim() === '') {
     errors.charge_amount = 'Charge amount is required.';
   } else if (isNaN(amount) || amount < 0) {

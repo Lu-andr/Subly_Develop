@@ -14,6 +14,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
+    flowType: 'pkce',
     storage: ExpoSecureStoreAdapter,
     autoRefreshToken: true,
     persistSession: true,

@@ -6,8 +6,8 @@ import { Trial } from '../../types';
 import { colors } from '../../constants/colors';
 import { typography } from '../../constants/typography';
 import { borderRadius, shadow, spacing } from '../../constants/spacing';
-import { formatCurrency } from '../../utils/currencyUtils';
-import { calculateMoneyAtRisk, getMoneyAtRiskTrials } from '../../hooks/useTrials';
+import { formatCurrencyTotals } from '../../utils/currencyUtils';
+import { getMoneyAtRiskTrials } from '../../hooks/useTrials';
 import { getDaysRemaining } from '../../utils/dateUtils';
 
 interface MoneyAtRiskCardProps {
@@ -17,7 +17,7 @@ interface MoneyAtRiskCardProps {
 
 export const MoneyAtRiskCard: React.FC<MoneyAtRiskCardProps> = ({ trials, onPress }) => {
   const atRiskTrials = getMoneyAtRiskTrials(trials);
-  const total = calculateMoneyAtRisk(trials);
+  const total = formatCurrencyTotals(atRiskTrials);
   const activeTrials = trials.filter(
     (t) => t.status === 'ACTIVE' || t.status === 'EXPIRING_SOON'
   );
@@ -40,13 +40,13 @@ export const MoneyAtRiskCard: React.FC<MoneyAtRiskCardProps> = ({ trials, onPres
         </View>
         <View style={styles.safeText}>
           <View style={styles.safeHeaderRow}>
-            <Text style={styles.safeTitle}>All Clear · 100% Protected</Text>
+            <Text style={styles.safeTitle}>No upcoming tracked charges</Text>
             <View style={styles.safeBadge}>
               <Text style={styles.safeBadgeText}>SAFE</Text>
             </View>
           </View>
           <Text style={styles.safeDesc}>
-            No renewals due in the next 30 days. You won't be charged unexpectedly.
+            No tracked trial ends in the next 30 days. Check your provider for actual billing dates.
           </Text>
         </View>
       </View>
@@ -59,7 +59,7 @@ export const MoneyAtRiskCard: React.FC<MoneyAtRiskCardProps> = ({ trials, onPres
       onPress={onPress}
       activeOpacity={0.92}
       accessibilityRole="button"
-      accessibilityLabel={`Money at risk: ${formatCurrency(total, 'INR')} from ${atRiskTrials.length} trials`}
+      accessibilityLabel={`Money at risk: ${total} from ${atRiskTrials.length} trials`}
     >
       {/* Top Tag & Security Badge */}
       <View style={styles.topRow}>
@@ -73,7 +73,7 @@ export const MoneyAtRiskCard: React.FC<MoneyAtRiskCardProps> = ({ trials, onPres
       {/* Main Amount */}
       <View style={styles.amountContainer}>
         <Text style={styles.amountLabel}>Total Money at Risk</Text>
-        <Text style={styles.amount}>{formatCurrency(total, 'INR')}</Text>
+        <Text style={styles.amount}>{total}</Text>
         <Text style={styles.subtitle}>
           Scheduled to renew if not cancelled before trial ends
         </Text>

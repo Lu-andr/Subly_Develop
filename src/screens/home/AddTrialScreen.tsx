@@ -22,9 +22,9 @@ import { Input } from '../../components/ui/Input';
 import { colors } from '../../constants/colors';
 import { typography } from '../../constants/typography';
 import { borderRadius, spacing, shadow } from '../../constants/spacing';
-import { CURRENCY_OPTIONS } from '../../utils/currencyUtils';
+import { CURRENCY_OPTIONS, formatCurrency } from '../../utils/currencyUtils';
 import { validateTrialForm, hasErrors } from '../../utils/validationUtils';
-import { toISODateString, formatDate } from '../../utils/dateUtils';
+import { toISODateString, formatDate, parseLocalDate } from '../../utils/dateUtils';
 import { SERVICE_PRESETS, ServicePreset } from '../../constants/servicePresets';
 import { parseTrialConfirmation } from '../../utils/textParser';
 
@@ -58,10 +58,10 @@ export const AddTrialScreen: React.FC<AddTrialScreenProps> = ({
 
   const [serviceName, setServiceName] = useState(existingTrial?.service_name ?? '');
   const [startDate, setStartDate] = useState<Date>(
-    existingTrial ? new Date(existingTrial.trial_start_date) : today
+    existingTrial ? parseLocalDate(existingTrial.trial_start_date) : today
   );
   const [endDate, setEndDate] = useState<Date>(
-    existingTrial ? new Date(existingTrial.trial_end_date) : (() => {
+    existingTrial ? parseLocalDate(existingTrial.trial_end_date) : (() => {
       const d = new Date();
       d.setDate(d.getDate() + 7);
       return d;
@@ -93,18 +93,18 @@ export const AddTrialScreen: React.FC<AddTrialScreenProps> = ({
     const end = new Date();
     end.setDate(end.getDate() + preset.trialDays);
     setEndDate(end);
-    setChargeAmount(String(preset.defaultPrice));
+    setChargeAmount('');
     setCurrency(preset.currency as Currency);
     setBillingCycle(preset.billingCycle);
     setCancellationUrl(preset.cancellationUrl);
-    setAutoFillSuccessMsg(`Auto-filled ${preset.name} (${preset.trialDays}d free, ₹${preset.defaultPrice}/${preset.billingCycle === 'monthly' ? 'mo' : preset.billingCycle})`);
+    setAutoFillSuccessMsg(`Selected ${preset.name}. Enter your actual price and verify the dates.`);
   };
 
   const handleParseText = () => {
     if (!pastedText.trim()) return;
     const parsed = parseTrialConfirmation(pastedText);
     if (parsed.serviceName) setServiceName(parsed.serviceName);
-    if (parsed.chargeAmount) setChargeAmount(String(parsed.chargeAmount));
+    if (parsed.chargeAmount !== undefined) setChargeAmount(String(parsed.chargeAmount));
     if (parsed.currency) setCurrency(parsed.currency as Currency);
     if (parsed.endDate) setEndDate(parsed.endDate);
     if (parsed.billingCycle) setBillingCycle(parsed.billingCycle);
@@ -113,7 +113,7 @@ export const AddTrialScreen: React.FC<AddTrialScreenProps> = ({
     const highlights: string[] = [];
     if (parsed.serviceName) highlights.push(parsed.serviceName);
     if (parsed.trialDays) highlights.push(`${parsed.trialDays} days free`);
-    if (parsed.chargeAmount) highlights.push(`₹${parsed.chargeAmount}`);
+    if (parsed.chargeAmount !== undefined) highlights.push(formatCurrency(parsed.chargeAmount, (parsed.currency ?? currency) as Currency));
 
     if (highlights.length > 0) {
       setAutoFillSuccessMsg(`Extracted: ${highlights.join(' • ')}`);
@@ -238,7 +238,7 @@ export const AddTrialScreen: React.FC<AddTrialScreenProps> = ({
                   </Text>
                   <TextInput
                     style={styles.pasteInput}
-                    placeholder="e.g. Welcome to Canva Pro! Your 30-day free trial starts today. You'll be billed ₹499/mo starting Oct 2026..."
+                    placeholder="e.g. Your Example plan renews on Oct 25, 2026 at ZAR 199.99 per month."
                     placeholderTextColor={colors.gray400}
                     multiline
                     numberOfLines={3}
@@ -287,7 +287,7 @@ export const AddTrialScreen: React.FC<AddTrialScreenProps> = ({
                         {p.name}
                       </Text>
                       <Text style={styles.presetPrice}>
-                        ₹{p.defaultPrice}/{p.billingCycle === 'monthly' ? 'mo' : p.billingCycle}
+                        Enter your plan price
                       </Text>
                     </TouchableOpacity>
                   );
@@ -467,7 +467,7 @@ export const AddTrialScreen: React.FC<AddTrialScreenProps> = ({
         )}
 
         {/* Currency Modal */}
-        <Modal visible={showCurrencyPicker} transparent animationType="slide">
+        <Modal visible={showCurrencyPicker} onRequestClose={() => setShowCurrencyPicker(false)} transparent animationType="slide">
           <View style={styles.modalOverlay}>
             <View style={styles.modalSheet}>
               <View style={styles.modalHandle} />

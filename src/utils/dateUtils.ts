@@ -1,6 +1,16 @@
 // TrialGuard — Date Utilities
 import { TrialStatus } from '../types';
 
+export function parseLocalDate(value: string): Date {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return new Date(value);
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function calendarDay(date: Date): number {
+  return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86400000;
+}
+
 /**
  * Calculate days remaining from today to the trial end date.
  * Returns a negative number if the trial has already expired.
@@ -9,11 +19,10 @@ export function getDaysRemaining(trialEndDate: string): number {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const endDate = new Date(trialEndDate);
+  const endDate = parseLocalDate(trialEndDate);
   endDate.setHours(0, 0, 0, 0);
 
-  const diffMs = endDate.getTime() - today.getTime();
-  return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  return calendarDay(endDate) - calendarDay(today);
 }
 
 /**
@@ -46,7 +55,7 @@ export function getCountdownLabel(daysRemaining: number): string {
  * Format a date string like "Sep 15, 2026"
  */
 export function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
+  const date = parseLocalDate(dateStr);
   return date.toLocaleDateString('en-IN', {
     day: 'numeric',
     month: 'short',
@@ -68,12 +77,11 @@ export function toISODateString(date: Date): string {
  * Get the total days of a trial.
  */
 export function getTotalDays(startDate: string, endDate: string): number {
-  const start = new Date(startDate);
+  const start = parseLocalDate(startDate);
   start.setHours(0, 0, 0, 0);
-  const end = new Date(endDate);
+  const end = parseLocalDate(endDate);
   end.setHours(0, 0, 0, 0);
-  const diffMs = end.getTime() - start.getTime();
-  return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+  return Math.max(1, calendarDay(end) - calendarDay(start));
 }
 
 /**
@@ -104,7 +112,7 @@ export function getNotificationDate(
   trialEndDate: string,
   daysBefore: number
 ): Date | null {
-  const endDate = new Date(trialEndDate);
+  const endDate = parseLocalDate(trialEndDate);
   endDate.setHours(9, 0, 0, 0); // 9 AM notification
 
   const notifyDate = new Date(endDate);

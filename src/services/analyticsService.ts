@@ -13,7 +13,7 @@ class AnalyticsService {
 
   identify(userId: string) {
     this.userId = userId;
-    console.log('[Analytics] Identified user:', userId);
+    if (__DEV__) console.log('[Analytics] User identified');
   }
 
   reset() {
@@ -28,7 +28,7 @@ class AnalyticsService {
       properties: properties ?? {},
     };
     // TODO: Replace with real analytics provider
-    console.log('[Analytics]', JSON.stringify(payload));
+    if (__DEV__) console.log('[Analytics]', JSON.stringify(payload));
   }
 }
 

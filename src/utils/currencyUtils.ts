@@ -73,3 +73,20 @@ export function isValidUrl(url: string): boolean {
     return false;
   }
 }
+
+/** Parse a manually entered amount without silently truncating decimal commas. */
+export function parseCurrencyAmount(raw: string): number {
+  const normalized = raw.trim().replace(/[\s\u00a0\u202f]/g, '').replace(',', '.');
+  if (!/^\d+(?:\.\d{1,2})?$/.test(normalized)) return NaN;
+  const amount = Number(normalized);
+  return Number.isFinite(amount) && amount <= 99999999.99 ? amount : NaN;
+}
+
+/** Keep currencies separate. These totals do not perform exchange-rate conversion. */
+export function formatCurrencyTotals(records: { charge_amount: number; currency: Currency }[]): string {
+  const totals = new Map<Currency, number>();
+  for (const record of records) {
+    totals.set(record.currency, (totals.get(record.currency) ?? 0) + Math.round(record.charge_amount * 100));
+  }
+  return [...totals].map(([currency, cents]) => formatCurrency(cents / 100, currency)).join(' · ') || formatCurrency(0);
+}

@@ -105,10 +105,11 @@ export async function scheduleTrialReminders(
     await cancelTrialNotifications(trial.id);
 
     // 2. If notifications disabled globally or trial is cancelled, do nothing
-    if (!prefs.notifications_enabled || trial.status === 'CANCELLED') {
+    if (!prefs.notifications_enabled || (trial.status === 'CANCELLED' || trial.status === 'EXPIRED')) {
       return { scheduled: 0, failed: 0 };
     }
 
+    if (await getNotificationPermissionStatus() !== 'granted') return { scheduled: 0, failed: 0 };
     await ensureNotificationChannel();
 
     // Parse the trial end date (expected format YYYY-MM-DD)
@@ -203,4 +204,34 @@ export function setupNotificationResponseHandler(
   } catch {
     return () => {};
   }
+}
+
+// Serialize rescheduling so edits and preference changes cannot duplicate alarms.
+let scheduleQueue: Promise<void> = Promise.resolve();
+let revision = 0;
+export function cancelAllTrialNotifications(): Promise<void> {
+  revision++;
+  const task = scheduleQueue.catch(() => {}).then(async () => {
+    if (Platform.OS !== 'web') await Notifications.cancelAllScheduledNotificationsAsync();
+  });
+  scheduleQueue = task;
+  return task;
+}
+export function syncTrialNotifications(trials: Trial[], prefs: NotificationPreferences): Promise<void> {
+  const requestedRevision = ++revision;
+  const task = scheduleQueue.catch(() => {}).then(async () => {
+    if (Platform.OS === 'web' || requestedRevision !== revision) return;
+    await Notifications.cancelAllScheduledNotificationsAsync();
+    if (!prefs.notifications_enabled) return;
+    // At most 60 reminders, within the iOS pending-notification limit.
+    const upcoming = trials.filter((t) => t.status === 'ACTIVE' || t.status === 'EXPIRING_SOON')
+      .sort((a, b) => a.trial_end_date.localeCompare(b.trial_end_date)).slice(0, 15);
+    for (const trial of upcoming) {
+      if (requestedRevision !== revision) return;
+      const result = await scheduleTrialReminders(trial, prefs);
+      if (result.failed) throw new Error('Some reminders could not be scheduled. Check notification permissions in device settings.');
+    }
+  });
+  scheduleQueue = task;
+  return task;
 }

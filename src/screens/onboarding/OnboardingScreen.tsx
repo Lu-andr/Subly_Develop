@@ -39,9 +39,9 @@ const SLIDES: SlideData[] = [
     id: '1',
     tag: 'MEET SUBLY',
     title: 'Track Every Free Trial',
-    subtitle: 'Zero unexpected charges',
+    subtitle: 'Keep billing dates visible',
     description:
-      'Add your streaming, app, and software trials in seconds. Subly monitors your renewals 24/7 so your wallet stays protected.',
+      'Add your streaming, app, and software trials in seconds. Subly helps you track dates and schedules reminders on your device.',
     featurePill: '✨ 1-Tap Popular Presets • 📩 Receipt Auto-Parser',
     mascotMood: 'happy',
     bubbleText: "I'm Subly, your trial guardian! 👋",
@@ -66,9 +66,9 @@ const SLIDES: SlideData[] = [
     subtitle: 'Direct portal navigation',
     description:
       'Jump straight to the provider’s cancellation portal with one tap. No more hunting through confusing account settings.',
-    featurePill: '💰 Save ₹12,000+ Yearly • 📊 Savings Archive',
+    featurePill: '📊 Track amounts • Review your history',
     mascotMood: 'celebrating',
-    bubbleText: 'Saved ₹499 this month! 🎉',
+    bubbleText: 'Review your cancelled trials 📋',
     bgGradient: '#F0FDF4',
   },
 ];

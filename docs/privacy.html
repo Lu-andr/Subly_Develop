@@ -1,0 +1,42 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Subly PRIVACY_POLICY.md</title><style>body{max-width:800px;margin:32px auto;padding:0 20px;font:16px/1.6 system-ui;color:#111}a{color:#075985}</style><body><nav><a href="index.html">Subly</a> · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a> · <a href="account-deletion.html">Account deletion</a></nav><h1>Subly Privacy Policy</h1>
+
+<p>Last updated: 5 October 2026</p>
+
+<p>**Release draft: replace [OWNER_NAME] and [SUPPORT_EMAIL] before publishing.**</p>
+
+<p>Subly is operated by [OWNER_NAME]. Contact: [SUPPORT_EMAIL]. This policy covers the Subly mobile application.</p>
+
+<h2>Information processed</h2>
+
+<p>When you create an account, Subly processes your email address, account identifier, password through Supabase Authentication, and the display name you provide. If you choose Google sign-in, Supabase processes the profile information returned by Google under your authorization.</p>
+
+<p>Subly stores the trial and subscription details you enter: service name, dates, amount, currency, billing frequency, cancellation link, and notes. It also stores your reminder preferences. Avoid entering bank details or other sensitive information in notes.</p>
+
+<p>An authentication session is stored on your device so you can remain signed in. On mobile devices the app uses Expo Secure Store. A browser version uses browser local storage. If local persistence fails, a temporary in-memory fallback may be used.</p>
+
+<p>Text pasted into the receipt/SMS form is parsed on your device. Subly does not request access to your inbox, SMS messages, contacts, bank accounts, or payment cards. Only the details you choose to save are sent to Supabase.</p>
+
+<h2>Purposes and service providers</h2>
+
+<p>Data is used for account access, storing your records, synchronizing them when you load or refresh the app, and scheduling reminders. Supabase provides the database and authentication. Google is involved if you choose Google sign-in. Your device operating system presents local reminders.</p>
+
+<p>The current app does not register a remote push token or include an advertising SDK. Its internal event logger does not send events to an external analytics provider. Hosting providers may maintain operational logs; the operator must review actual provider settings before completing the Google Play Data safety form.</p>
+
+<h2>Security and your records</h2>
+
+<p>The app connects to Supabase using HTTPS and authenticated requests. The supplied database schema restricts access to each user's records using Row Level Security. The operator is responsible for applying and verifying those policies in the live project. No system can guarantee absolute security.</p>
+
+<h2>Account deletion and retention</h2>
+
+<p>You can request deletion in Profile &gt; Delete Account &amp; Data. The deployed server function verifies your session, deletes your Supabase authentication account, and removes the linked profile, tracked records, and reminder preferences through database cascades. The app then clears scheduled reminders on that device and signs out.</p>
+
+<p>You can also request account deletion outside the app by following the account deletion page or emailing [SUPPORT_EMAIL] from the account's registered email address. Do not send your password. Requests must be verified before deletion.</p>
+
+<p>Records remain in the active database until you delete them or your account. Provider backups and operational logs may remain for the provider's configured retention period; the operator must disclose the applicable period before release. An offline device may retain previously scheduled reminders until it next runs the app or notifications are disabled/uninstalled.</p>
+
+<p>Deleting a Subly record or account does not cancel a subscription with another company. Complete cancellation directly with the provider.</p>
+
+<h2>Choices, children, and changes</h2>
+
+<p>You may change notification settings, delete tracked records, sign out, or request account deletion. Subly is not designed for children under 13. Contact [SUPPORT_EMAIL] about privacy, data access/correction, or concerns. Updates to this policy will be dated on this page.</p>
+</body></html>
