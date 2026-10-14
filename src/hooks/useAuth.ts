@@ -20,7 +20,6 @@ interface AuthState {
 
 interface AuthActions {
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (name: string, email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
@@ -112,27 +111,6 @@ function useAuthState(): AuthState & AuthActions {
     }
   }, []);
 
-  const signUp = useCallback(async (name: string, email: string, password: string) => {
-    setError(null);
-    setLoading(true);
-    try {
-      const { error: signUpError } = await supabase.auth.signUp({
-        email: email.trim().toLowerCase(),
-        password,
-        options: {
-          data: { name: name.trim() },
-          emailRedirectTo: 'subly://auth/callback',
-        },
-      });
-      if (signUpError) throw signUpError;
-    } catch (e: any) {
-      setError(e.message ?? 'Sign up failed. Please try again.');
-      throw e;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   const signOut = useCallback(async () => {
     setError(null);
     const { error: signOutError } = await supabase.auth.signOut();
@@ -207,7 +185,6 @@ function useAuthState(): AuthState & AuthActions {
     loading,
     error,
     signIn,
-    signUp,
     signOut,
     resetPassword,
     signInWithGoogle,

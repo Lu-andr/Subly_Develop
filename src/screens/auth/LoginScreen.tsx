@@ -21,12 +21,10 @@ import { borderRadius, shadow, spacing } from '../../constants/spacing';
 import { AnimatedMascot } from '../../components/ui/AnimatedMascot';
 
 interface LoginScreenProps {
-  onNavigateSignUp: () => void;
   onNavigateForgotPassword: () => void;
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({
-  onNavigateSignUp,
   onNavigateForgotPassword,
 }) => {
   const { signIn, signInWithGoogle, loading, error, clearError } = useAuth();
@@ -156,14 +154,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           </TouchableOpacity>
         </View>
 
-        {/* Footer Navigation */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Don't have an account? </Text>
-          <TouchableOpacity onPress={onNavigateSignUp} accessibilityRole="button">
-            <Text style={styles.signUpLink}>Create Account</Text>
-          </TouchableOpacity>
-        </View>
-
         {/* Security Badge */}
         <View style={styles.securityRow}>
           <Ionicons name="lock-closed" size={13} color={colors.gray500} />
@@ -268,22 +258,6 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.sm,
     fontFamily: typography.fontFamily.semiBold,
     color: colors.gray800,
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: spacing.xl,
-  },
-  footerText: {
-    fontSize: typography.fontSize.sm,
-    fontFamily: typography.fontFamily.regular,
-    color: colors.textMuted,
-  },
-  signUpLink: {
-    fontSize: typography.fontSize.sm,
-    fontFamily: typography.fontFamily.bold,
-    color: colors.primary,
   },
   securityRow: {
     flexDirection: 'row',
