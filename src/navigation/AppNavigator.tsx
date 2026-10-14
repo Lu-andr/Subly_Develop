@@ -133,12 +133,11 @@ interface ProfileStackNavigatorProps {
   profile: Profile | null;
   prefs: NotificationPreferences;
   onUpdatePrefs: (updates: Partial<NotificationPreferences>) => Promise<void>;
-  onSignOut: () => Promise<void>;
-  onDeleteAccount: () => Promise<void>;
+  onClearData: () => Promise<void>;
 }
 
 const ProfileStackNavigator: React.FC<ProfileStackNavigatorProps> = ({
-  profile, prefs, onUpdatePrefs, onSignOut, onDeleteAccount,
+  profile, prefs, onUpdatePrefs, onClearData,
 }) => {
   return (
     <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
@@ -148,8 +147,7 @@ const ProfileStackNavigator: React.FC<ProfileStackNavigatorProps> = ({
             profile={profile}
             prefs={prefs}
             onUpdatePrefs={onUpdatePrefs}
-            onSignOut={onSignOut}
-            onDeleteAccount={onDeleteAccount}
+            onClearData={onClearData}
             onNavigateNotifications={() => navigation.navigate('NotificationSettings')}
           />
         )}
@@ -171,8 +169,7 @@ const ProfileStackNavigator: React.FC<ProfileStackNavigatorProps> = ({
 interface AppNavigatorProps {
   userId: string;
   profile: Profile | null;
-  onSignOut: () => Promise<void>;
-  onDeleteAccount: () => Promise<void>;
+  onClearData: () => Promise<void>;
   notificationTrialId: string | null;
   onNotificationHandled: () => void;
 }
@@ -180,8 +177,7 @@ interface AppNavigatorProps {
 export const AppNavigator: React.FC<AppNavigatorProps> = ({
   userId,
   profile,
-  onSignOut,
-  onDeleteAccount,
+  onClearData,
   notificationTrialId,
   onNotificationHandled,
 }) => {
@@ -427,7 +423,7 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({
         <Tab.Screen
           name="ProfileTab"
           options={{
-            tabBarLabel: 'Profile',
+            tabBarLabel: 'Settings',
             tabBarIcon: ({ color, focused }) => (
               <Ionicons
                 name={focused ? 'person' : 'person-outline'}
@@ -442,8 +438,7 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({
               profile={profile}
               prefs={prefs}
               onUpdatePrefs={updatePrefs}
-              onSignOut={onSignOut}
-              onDeleteAccount={onDeleteAccount}
+                onClearData={onClearData}
             />
           )}
         </Tab.Screen>

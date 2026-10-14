@@ -1,6 +1,6 @@
 # Subly
 
-React Native / Expo subscription trial tracker with Supabase authentication and records, and local device reminders.
+React Native / Expo subscription trial tracker with local on-device records and reminders. No account or sign-in is required.
 
 ## Release preparation
 
@@ -36,7 +36,7 @@ The release checker intentionally fails until support/contact/URL prerequisites 
 - Local reminders at 7/3/1/0 days before an entered date. Up to the 15 nearest active records are scheduled.
 - One entered end date is tracked; subsequent renewals are not automatically generated.
 - Cancellation is performed by the user with the provider. Subly stores the user's cancellation mark.
-- Internet is needed for account access and saving/loading records. Previously scheduled local reminders do not require a remote push service.
+- Records and reminder settings are stored on this phone using AsyncStorage. They survive normal app restarts; they are not synchronized to Supabase or another device. Clearing app storage or uninstalling can remove them. Previously stored Supabase records are not automatically imported or deleted.
 
 ## Layout
 

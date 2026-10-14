@@ -2,11 +2,12 @@ name: Build SmartFinance test APK
 
 on:
   push:
-    branches: [codex/google-only-auth]
+    branches: [codex/no-login]
   workflow_dispatch:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   apk:
@@ -15,6 +16,11 @@ jobs:
     env:
       CI: '1'
     steps:
+      - name: Stop obsolete Google-login build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: Lu-andr/Subly_Develop
+        run: gh run cancel 38588723608 || true
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
@@ -46,21 +52,21 @@ jobs:
       - name: Verify signature and record checksum
         run: |
           mkdir -p test-apk
-          cp android/app/build/outputs/apk/release/app-release.apk test-apk/Subly-google-only-1.0.1.apk
-          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs test-apk/Subly-google-only-1.0.1.apk
+          cp android/app/build/outputs/apk/release/app-release.apk test-apk/Subly-no-login-1.0.2.apk
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs test-apk/Subly-no-login-1.0.2.apk
           cd test-apk
-          sha256sum Subly-google-only-1.0.1.apk > SHA256SUMS.txt
+          sha256sum Subly-no-login-1.0.2.apk > SHA256SUMS.txt
       - name: Verify the actual packaged login UI
         run: |
           python3 - <<'PYAPK'
           import zipfile
-          with zipfile.ZipFile('test-apk/Subly-google-only-1.0.1.apk') as apk:
+          with zipfile.ZipFile('test-apk/Subly-no-login-1.0.2.apk') as apk:
               bundle = apk.read('assets/index.android.bundle')
-          for label in [b'EMAIL ADDRESS', b'you@example.com', b'Forgot password?', b'Create Account']:
+          for label in [b'EMAIL ADDRESS', b'you@example.com', b'Forgot password?', b'Create Account', b'Continue with Google', b'Sign in with Google', b'Sign Out']:
               assert label not in bundle, f'Email login UI still packaged: {label!r}'
-          assert b'Continue with Google' in bundle
-          assert b'Version 1.0.1' in bundle
-          print('Packaged UI verified: Google-only login, version 1.0.1')
+          assert b'No account required. Records stay on this phone.' in bundle
+          assert b'1.0.2' in bundle
+          print('Packaged UI verified: no login UI, local storage, version 1.0.2')
           PYAPK
       - name: Upload phone APK
         uses: actions/upload-artifact@v4
@@ -74,4 +80,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: Lu-andr/Subly_Develop
         run: |
-          gh release create google-only-auth-1.0.1 test-apk/Subly-google-only-1.0.1.apk test-apk/SHA256SUMS.txt --target "$GITHUB_SHA" --prerelease --title 'Subly 1.0.1 — вход только через Google' --notes 'Пакет com.subly.smartfinance. Все формы входа/регистрации по email и восстановления пароля удалены. Подключены Firebase Analytics и Remote Config; сбор Analytics отключён. Каталог офферов, WebView и aff_sub2–aff_sub5 пока не реализованы. APK подписан тестовым ключом; работа на устройстве требует проверки.'
+          gh release create no-login-1.0.2 test-apk/Subly-no-login-1.0.2.apk test-apk/SHA256SUMS.txt --target "$GITHUB_SHA" --prerelease --title 'Subly 1.0.2 — без входа' --notes 'Пакет com.subly.smartfinance. Все формы входа удалены, включая Google. Записи и настройки хранятся на телефоне; аккаунт не требуется. Подключены Firebase Analytics и Remote Config; сбор Analytics отключён. Каталог офферов, WebView и aff_sub2–aff_sub5 пока не реализованы. APK подписан тестовым ключом; работа на устройстве требует проверки.'

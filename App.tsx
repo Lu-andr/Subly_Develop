@@ -16,11 +16,11 @@ import {
 // Screens
 import { SplashScreen } from './src/screens/SplashScreen';
 import { OnboardingScreen, isOnboardingDone } from './src/screens/onboarding/OnboardingScreen';
-import { AuthNavigator } from './src/navigation/AuthNavigator';
 import { AppNavigator } from './src/navigation/AppNavigator';
 
 // Hooks & Services
-import { useAuth, AuthProvider } from './src/hooks/useAuth';
+import { clearLocalData, LOCAL_USER_ID } from './src/services/localStore';
+import { cancelAllTrialNotifications } from './src/services/notificationService';
 import {
   setupNotificationResponseHandler,
 } from './src/services/notificationService';
@@ -28,11 +28,11 @@ import { analytics } from './src/services/analyticsService';
 import * as Notifications from 'expo-notifications';
 import { colors } from './src/constants/colors';
 
-type AppFlow = 'splash' | 'onboarding' | 'auth' | 'app';
+type AppFlow = 'splash' | 'onboarding' | 'app';
 
 // ─── Inner component that uses auth hook ─────────────────
 const AppInner: React.FC = () => {
-  const { session, user, profile, loading, signOut, deleteAccount } = useAuth();
+  const [dataEpoch, setDataEpoch] = useState(0);
   const [notificationTrialId, setNotificationTrialId] = useState<string | null>(null);
   const onNotificationHandled = useCallback(() => setNotificationTrialId(null), []);
   const [flow, setFlow] = useState<AppFlow>('splash');
@@ -52,36 +52,18 @@ const AppInner: React.FC = () => {
     return cleanup;
   }, []);
 
-  // Decide flow after splash + auth resolved
-  const resolveFlow = useCallback(async () => {
-    if (loading || !splashDone) return;
-    if (session && user) {
-      analytics.track('app_opened');
-      setFlow('app');
-      return;
-    }
-    const onboarded = await isOnboardingDone();
-    setFlow(onboarded ? 'auth' : 'onboarding');
-  }, [loading, splashDone, session, user]);
-
   useEffect(() => {
-    resolveFlow();
-  }, [resolveFlow]);
-
-  // Also react to auth state changes while app is open
-  useEffect(() => {
-    if (flow === 'app' && !loading && !session) {
-      setFlow('auth');
-    }
-  }, [session, loading, flow]);
-
-  const handleSignOut = useCallback(async () => {
-    try {
-      await signOut();
-    } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'Failed to sign out.');
-    }
-  }, [signOut]);
+    if (!splashDone) return;
+    let active = true;
+    isOnboardingDone().then(done => { if (active) setFlow(done ? 'app' : 'onboarding'); })
+      .catch(() => { if (active) setFlow('onboarding'); });
+    return () => { active = false; };
+  }, [splashDone]);
+  const handleClearData = useCallback(async () => {
+    await cancelAllTrialNotifications();
+    await clearLocalData();
+    setDataEpoch(v => v + 1);
+  }, []);
 
   const finishSplash = useCallback(() => setSplashDone(true), []);
 
@@ -96,26 +78,17 @@ const AppInner: React.FC = () => {
 
   // Onboarding
   if (flow === 'onboarding') {
-    return <OnboardingScreen onComplete={() => setFlow('auth')} />;
-  }
-
-  // Auth
-  if (flow === 'auth' || !session || !user) {
-    return (
-      <NavigationContainer>
-        <AuthNavigator />
-      </NavigationContainer>
-    );
+    return <OnboardingScreen onComplete={() => setFlow('app')} />;
   }
 
   // Authenticated App
   return (
     <NavigationContainer>
       <AppNavigator
-        userId={user.id}
-        profile={profile}
-        onSignOut={handleSignOut}
-        onDeleteAccount={deleteAccount}
+        key={dataEpoch}
+        userId={LOCAL_USER_ID}
+        profile={null}
+        onClearData={handleClearData}
         notificationTrialId={notificationTrialId}
         onNotificationHandled={onNotificationHandled}
       />
@@ -149,7 +122,7 @@ export default function App() {
           backgroundColor={colors.background}
           translucent={false}
         />
-        <AuthProvider><AppInner /></AuthProvider>
+        <AppInner />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

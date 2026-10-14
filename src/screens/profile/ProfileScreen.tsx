@@ -19,14 +19,13 @@ import { typography } from '../../constants/typography';
 import { borderRadius, shadow, spacing } from '../../constants/spacing';
 import { Button } from '../../components/ui/Button';
 
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.0.2';
 
 interface ProfileScreenProps {
   profile: Profile | null;
   prefs: NotificationPreferences;
   onUpdatePrefs: (updates: Partial<NotificationPreferences>) => Promise<void>;
-  onSignOut: () => Promise<void>;
-  onDeleteAccount: () => Promise<void>;
+  onClearData: () => Promise<void>;
   onNavigateNotifications: () => void;
 }
 
@@ -36,38 +35,17 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   profile,
   prefs,
   onUpdatePrefs,
-  onSignOut,
-  onDeleteAccount,
+  onClearData,
   onNavigateNotifications,
 }) => {
-  const [signingOut, setSigningOut] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
 
   const avatarLetter = (profile?.name || profile?.email || 'S')[0].toUpperCase();
 
-  const handleSignOut = () => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign Out',
-        style: 'destructive',
-        onPress: async () => {
-          setSigningOut(true);
-          try {
-            await onSignOut();
-          } catch {
-            Alert.alert('Error', 'Failed to sign out. Please try again.');
-            setSigningOut(false);
-          }
-        },
-      },
-    ]);
-  };
-
   const handleDeleteAccount = () => {
     Alert.alert(
-      'Delete Account & Data',
-      'Are you sure you want to permanently delete your Subly account? All your subscriptions, reminders, and history will be permanently erased. This cannot be undone.',
+      'Clear Local Data',
+      'Delete all subscriptions, history and reminder settings stored on this phone? This cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -76,9 +54,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           onPress: async () => {
             setDeletingAccount(true);
             try {
-              await onDeleteAccount();
+              await onClearData();
+              setDeletingAccount(false);
             } catch {
-              Alert.alert('Error', 'Failed to delete account. Please try again.');
+              Alert.alert('Error', 'Failed to clear local data. Please try again.');
               setDeletingAccount(false);
             }
           },
@@ -104,24 +83,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               <Ionicons name="shield-checkmark" size={14} color={colors.white} />
             </View>
           </View>
-          <Text style={styles.name}>{profile?.name || 'Subly User'}</Text>
-          <Text style={styles.email}>{profile?.email}</Text>
-        </View>
-
-        {/* Account Section */}
-        <SectionHeader title="Account Details" />
-        <View style={styles.section}>
-          <SettingsRow
-            icon="person-outline"
-            label="Name"
-            value={profile?.name ?? '—'}
-          />
-          <SettingsRow
-            icon="mail-outline"
-            label="Email"
-            value={profile?.email ?? '—'}
-            last
-          />
+          <Text style={styles.name}>{'On this device'}</Text>
+          <Text style={styles.email}>No account required. Records stay on this phone.</Text>
         </View>
 
         {/* Notifications Section */}
@@ -187,7 +150,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             chevron
             onPress={() => Linking.openURL(TERMS_URL)}
           />
-          <SettingsRow icon="trash-outline" label="Account deletion help" chevron onPress={() => Linking.openURL(DELETION_URL)} />
           <SettingsRow
             icon="help-buoy-outline"
             label="Help & Support"
@@ -200,16 +162,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         {/* Account Actions */}
         <View style={styles.actionButtons}>
           <Button
-            title="Sign Out"
-            onPress={handleSignOut}
-            variant="outline"
-            fullWidth
-            size="lg"
-            loading={signingOut}
-            style={styles.signOutBtn}
-          />
-          <Button
-            title="Delete Account & Data"
+            title="Clear Local Data"
             onPress={handleDeleteAccount}
             variant="danger"
             fullWidth
@@ -220,7 +173,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         </View>
 
         <Text style={styles.footer}>
-          Subly • Track every trial. Never pay by surprise.
+          Subly • Track every trial. Saved locally on your phone.
         </Text>
       </ScrollView>
     </SafeAreaView>
