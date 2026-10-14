@@ -26,14 +26,13 @@ import {
 } from './src/services/notificationService';
 import { analytics } from './src/services/analyticsService';
 import * as Notifications from 'expo-notifications';
-import { ResetPasswordScreen } from './src/screens/auth/ResetPasswordScreen';
 import { colors } from './src/constants/colors';
 
 type AppFlow = 'splash' | 'onboarding' | 'auth' | 'app';
 
 // ─── Inner component that uses auth hook ─────────────────
 const AppInner: React.FC = () => {
-  const { session, user, profile, loading, signOut, deleteAccount, isPasswordRecovery, completePasswordRecovery } = useAuth();
+  const { session, user, profile, loading, signOut, deleteAccount } = useAuth();
   const [notificationTrialId, setNotificationTrialId] = useState<string | null>(null);
   const onNotificationHandled = useCallback(() => setNotificationTrialId(null), []);
   const [flow, setFlow] = useState<AppFlow>('splash');
@@ -94,8 +93,6 @@ const AppInner: React.FC = () => {
       />
     );
   }
-
-  if (isPasswordRecovery && session) return <ResetPasswordScreen onComplete={completePasswordRecovery} />;
 
   // Onboarding
   if (flow === 'onboarding') {

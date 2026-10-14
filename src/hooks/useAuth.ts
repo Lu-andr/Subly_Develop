@@ -15,18 +15,14 @@ interface AuthState {
   profile: Profile | null;
   loading: boolean;
   error: string | null;
-  isPasswordRecovery: boolean;
 }
 
 interface AuthActions {
-  signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   deleteAccount: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   clearError: () => void;
-  completePasswordRecovery: () => void;
 }
 
 function useAuthState(): AuthState & AuthActions {
@@ -34,7 +30,6 @@ function useAuthState(): AuthState & AuthActions {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isPasswordRecovery, setPasswordRecovery] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const activeUserId = useRef<string | null>(null);
 
@@ -68,7 +63,6 @@ function useAuthState(): AuthState & AuthActions {
         setTimeout(() => { if (mounted) void fetchProfile(s.user.id); }, 0);
       } else {
         setProfile(null);
-        setPasswordRecovery(false);
         analytics.reset();
       }
     };
@@ -77,11 +71,10 @@ function useAuthState(): AuthState & AuthActions {
       applySession(data.session);
     }).catch(() => { if (mounted) setLoading(false); });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
-      if (event === 'PASSWORD_RECOVERY') setPasswordRecovery(true);
       applySession(s);
     });
     const handleUrl = (url: string) => {
-      handleAuthLink(url).then((recovery) => { if (recovery && mounted) setPasswordRecovery(true); })
+      handleAuthLink(url)
         .catch(() => Alert.alert('Sign-in link', 'This link is invalid or expired. Request a new link.'));
     };
     const links = Linking.addEventListener('url', ({ url }) => handleUrl(url));
@@ -94,37 +87,11 @@ function useAuthState(): AuthState & AuthActions {
     return () => { mounted = false; activeUserId.current = null; subscription.unsubscribe(); links.remove(); appState.remove(); supabase.auth.stopAutoRefresh(); };
   }, [fetchProfile]);
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    setError(null);
-    setLoading(true);
-    try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
-        password,
-      });
-      if (signInError) throw signInError;
-    } catch (e: any) {
-      setError(e.message ?? 'Sign in failed. Please try again.');
-      throw e;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   const signOut = useCallback(async () => {
     setError(null);
     const { error: signOutError } = await supabase.auth.signOut();
     if (signOutError) throw signOutError;
     await cancelAllTrialNotifications();
-  }, []);
-
-  const resetPassword = useCallback(async (email: string) => {
-    setError(null);
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(
-      email.trim().toLowerCase(),
-      { redirectTo: 'subly://reset-password' }
-    );
-    if (resetError) throw new Error(resetError.message);
   }, []);
 
   const signInWithGoogle = useCallback(async () => {
@@ -177,16 +144,12 @@ function useAuthState(): AuthState & AuthActions {
   const clearError = useCallback(() => setError(null), []);
 
   return {
-    isPasswordRecovery,
-    completePasswordRecovery: () => setPasswordRecovery(false),
     session,
     user,
     profile,
     loading,
     error,
-    signIn,
     signOut,
-    resetPassword,
     signInWithGoogle,
     deleteAccount,
     refreshProfile,

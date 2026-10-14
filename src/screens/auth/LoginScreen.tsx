@@ -1,55 +1,23 @@
 // Subly — Login Screen with Interactive Mascot & Modern UI
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
   StatusBar,
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
 import { colors } from '../../constants/colors';
 import { typography } from '../../constants/typography';
 import { borderRadius, shadow, spacing } from '../../constants/spacing';
 import { AnimatedMascot } from '../../components/ui/AnimatedMascot';
 
-interface LoginScreenProps {
-  onNavigateForgotPassword: () => void;
-}
-
-export const LoginScreen: React.FC<LoginScreenProps> = ({
-  onNavigateForgotPassword,
-}) => {
-  const { signIn, signInWithGoogle, loading, error, clearError } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [formErrors, setFormErrors] = useState<{ email?: string; password?: string }>({});
-
-  const validate = (): boolean => {
-    const errs: typeof formErrors = {};
-    if (!email.trim()) errs.email = 'Email is required.';
-    else if (!/\S+@\S+\.\S+/.test(email)) errs.email = 'Enter a valid email.';
-    if (!password) errs.password = 'Password is required.';
-    setFormErrors(errs);
-    return Object.keys(errs).length === 0;
-  };
-
-  const handleSignIn = async () => {
-    clearError();
-    if (!validate()) return;
-    try {
-      await signIn(email, password);
-    } catch {
-      // error handled in useAuth state
-    }
-  };
+export const LoginScreen: React.FC = () => {
+  const { signInWithGoogle, loading, error, clearError } = useAuth();
 
   const handleGoogleSignIn = async () => {
     clearError();
@@ -61,10 +29,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <View style={styles.flex}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
       <ScrollView
         contentContainerStyle={styles.container}
@@ -92,75 +57,27 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             </View>
           )}
 
-          <Input
-            label="EMAIL ADDRESS"
-            value={email}
-            onChangeText={(t) => { setEmail(t); clearError(); }}
-            placeholder="you@example.com"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            error={formErrors.email}
-            returnKeyType="next"
-            accessibilityLabel="Email address"
-          />
-
-          <Input
-            label="PASSWORD"
-            value={password}
-            onChangeText={(t) => { setPassword(t); clearError(); }}
-            placeholder="••••••••"
-            secureTextEntry
-            error={formErrors.password}
-            returnKeyType="done"
-            onSubmitEditing={handleSignIn}
-            accessibilityLabel="Password"
-          />
-
-          <TouchableOpacity
-            onPress={onNavigateForgotPassword}
-            style={styles.forgotLink}
-            accessibilityRole="button"
-          >
-            <Text style={styles.forgotText}>Forgot password?</Text>
-          </TouchableOpacity>
-
-          <Button
-            title="Sign In"
-            onPress={handleSignIn}
-            loading={loading}
-            fullWidth
-            size="lg"
-            style={styles.signInBtn}
-          />
-
-          {/* Social Divider */}
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>OR</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
           {/* Google Sign In */}
           <TouchableOpacity
             style={styles.googleBtn}
             onPress={handleGoogleSignIn}
+            disabled={loading}
             activeOpacity={0.8}
             accessibilityRole="button"
             accessibilityLabel="Sign in with Google"
           >
             <Ionicons name="logo-google" size={18} color="#EA4335" />
-            <Text style={styles.googleBtnText}>Continue with Google</Text>
+            <Text style={styles.googleBtnText}>{loading ? 'Connecting…' : 'Continue with Google'}</Text>
           </TouchableOpacity>
         </View>
 
         {/* Security Badge */}
         <View style={styles.securityRow}>
           <Ionicons name="lock-closed" size={13} color={colors.gray500} />
-          <Text style={styles.securityText}>Your records are linked to your account</Text>
+          <Text style={styles.securityText}>Version 1.0.1 - Google sign-in</Text>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </View>
   );
 };
 
@@ -212,36 +129,6 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.sm,
     fontFamily: typography.fontFamily.medium,
     color: colors.danger,
-  },
-  forgotLink: {
-    alignSelf: 'flex-end',
-    marginBottom: spacing.lg,
-    marginTop: -spacing.xs,
-  },
-  forgotText: {
-    fontSize: typography.fontSize.xs,
-    fontFamily: typography.fontFamily.semiBold,
-    color: colors.primary,
-  },
-  signInBtn: {
-    marginBottom: spacing.base,
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: spacing.md,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#F1F5F9',
-  },
-  dividerText: {
-    fontSize: 10,
-    fontFamily: typography.fontFamily.semiBold,
-    color: colors.gray400,
-    paddingHorizontal: spacing.md,
-    letterSpacing: 0.5,
   },
   googleBtn: {
     flexDirection: 'row',

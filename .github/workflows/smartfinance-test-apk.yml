@@ -2,7 +2,7 @@ name: Build SmartFinance test APK
 
 on:
   push:
-    branches: [codex/firebase-smartfinance]
+    branches: [codex/google-only-auth]
   workflow_dispatch:
 
 permissions:
@@ -46,10 +46,22 @@ jobs:
       - name: Verify signature and record checksum
         run: |
           mkdir -p test-apk
-          cp android/app/build/outputs/apk/release/app-release.apk test-apk/Subly-smartfinance-test.apk
-          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs test-apk/Subly-smartfinance-test.apk
+          cp android/app/build/outputs/apk/release/app-release.apk test-apk/Subly-google-only-1.0.1.apk
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs test-apk/Subly-google-only-1.0.1.apk
           cd test-apk
-          sha256sum Subly-smartfinance-test.apk > SHA256SUMS.txt
+          sha256sum Subly-google-only-1.0.1.apk > SHA256SUMS.txt
+      - name: Verify the actual packaged login UI
+        run: |
+          python3 - <<'PYAPK'
+          import zipfile
+          with zipfile.ZipFile('test-apk/Subly-google-only-1.0.1.apk') as apk:
+              bundle = apk.read('assets/index.android.bundle')
+          for label in [b'EMAIL ADDRESS', b'you@example.com', b'Forgot password?', b'Create Account']:
+              assert label not in bundle, f'Email login UI still packaged: {label!r}'
+          assert b'Continue with Google' in bundle
+          assert b'Version 1.0.1' in bundle
+          print('Packaged UI verified: Google-only login, version 1.0.1')
+          PYAPK
       - name: Upload phone APK
         uses: actions/upload-artifact@v4
         with:
@@ -62,4 +74,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: Lu-andr/Subly_Develop
         run: |
-          gh release create smartfinance-test-2026-10-14 test-apk/Subly-smartfinance-test.apk test-apk/SHA256SUMS.txt --target "$GITHUB_SHA" --prerelease --title 'Subly SmartFinance — тестовый APK' --notes 'Пакет com.subly.smartfinance. Регистрация по email удалена. Подключены Firebase Analytics и Remote Config; сбор Analytics отключён. Каталог офферов, WebView и aff_sub2–aff_sub5 пока не реализованы. APK подписан тестовым ключом; работа на устройстве требует проверки.'
+          gh release create google-only-auth-1.0.1 test-apk/Subly-google-only-1.0.1.apk test-apk/SHA256SUMS.txt --target "$GITHUB_SHA" --prerelease --title 'Subly 1.0.1 — вход только через Google' --notes 'Пакет com.subly.smartfinance. Все формы входа/регистрации по email и восстановления пароля удалены. Подключены Firebase Analytics и Remote Config; сбор Analytics отключён. Каталог офферов, WebView и aff_sub2–aff_sub5 пока не реализованы. APK подписан тестовым ключом; работа на устройстве требует проверки.'
