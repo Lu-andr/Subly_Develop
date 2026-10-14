@@ -1,10 +1,10 @@
 # Подготовка Subly к Google Play
 
-Статус: код подготовлен к проверке выпуска. Подписанный AAB и тестирование на устройстве ещё не выполнены. Публикация не произведена.
+Статус: код подготовлен к проверке выпуска. Android-пакет изменён на com.subly.smartfinance согласно выбору владельца; приложение устанавливается отдельно от прежнего com.subly.app. Подписанный AAB и тестирование на устройстве ещё не выполнены. Публикация не произведена.
 
 ## 1. Идентификатор и версия
 
-Новое приложение: `com.subly.app`, отображаемое название Subly. Android Gradle и Expo теперь используют одинаковый идентификатор. Перед первой загрузкой подтвердите, что этот идентификатор подходит: после публикации смена идентификатора означает другое приложение.
+Новое приложение: `com.subly.smartfinance`, отображаемое название Subly. Android Gradle и Expo теперь используют одинаковый идентификатор. Перед первой загрузкой подтвердите, что этот идентификатор подходит: после публикации смена идентификатора означает другое приложение.
 
 Версия интерфейса: 1.0.0. Для EAS включены удалённый versionCode и autoIncrement. Target/compile SDK: 36. Для каждого нового AAB требуется новый versionCode. Native-папка android входит в Git, поэтому изменение app.json не заменяет ручную проверку Gradle и Manifest.
 
@@ -94,3 +94,7 @@ check:release намеренно завершится с ошибкой, пок�
 - Personal-account testing: https://support.google.com/googleplay/android-developer/answer/14151465
 - EAS credentials: https://docs.expo.dev/app-signing/managed-credentials/
 - Supabase admin deletion: https://supabase.com/docs/reference/javascript/auth-admin-deleteuser
+
+## Firebase: текущий этап
+
+Файл android/app/google-services.json относится к проекту firestore-lesson-f820f и пакету com.subly.smartfinance. Добавлены Google Services 4.5.0 и Firebase BoM 34.17.0 с Analytics и Remote Config. Сбор Analytics отключён в Manifest. Само добавление SDK не реализует каталог офферов, WebView, передачу рекламных идентификаторов или чтение параметра settings в React Native; эти функции ещё отсутствуют. Регистрация по email удалена, вход существующих пользователей и Google сохранены.

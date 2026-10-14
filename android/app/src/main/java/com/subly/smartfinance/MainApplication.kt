@@ -1,4 +1,4 @@
-package com.subly.app
+package com.subly.smartfinance
 
 import android.app.Application
 import android.content.res.Configuration

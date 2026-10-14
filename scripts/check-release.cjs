@@ -12,7 +12,7 @@ const app = JSON.parse(fs.readFileSync('app.json', 'utf8')).expo;
 const gradle = fs.readFileSync('android/app/build.gradle', 'utf8');
 const props = fs.readFileSync('android/gradle.properties', 'utf8');
 const manifest = fs.readFileSync('android/app/src/main/AndroidManifest.xml', 'utf8');
-check(app.android.package === 'com.subly.app' && gradle.includes("applicationId 'com.subly.app'"), 'Android package must match app.json and Gradle.');
+check(app.android.package === 'com.subly.smartfinance' && gradle.includes("applicationId 'com.subly.smartfinance'"), 'Android package must match app.json and Gradle.');
 check(/android.targetSdkVersion=(3[6-9]|[4-9]\d)/.test(props), 'Google Play target API must be at least 36.');
 check(gradle.includes('signingConfig signingConfigs.release'), 'Release must use an upload key, not debug signing.');
 check(!manifest.split('\n').some((line) => /READ_EXTERNAL_STORAGE|WRITE_EXTERNAL_STORAGE|SYSTEM_ALERT_WINDOW/.test(line) && !line.includes('tools:node="remove"')), 'Remove unused storage/overlay permissions.');
