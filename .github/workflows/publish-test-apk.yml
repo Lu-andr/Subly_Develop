@@ -1,0 +1,28 @@
+name: Publish existing test APK
+
+on:
+  push:
+    branches: [codex/publish-test-apk]
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: Lu-andr/Subly_Develop
+    steps:
+      - name: Download the already verified build
+        run: gh run download 37341846236 --name Subly-phone-test --dir apk
+      - name: Verify exact APK bytes
+        working-directory: apk
+        run: |
+          echo '626b2bc7d61be5e8a77351a025861440d20e313be43be16cd5c2fe5204055481  Subly-test.apk' | sha256sum --check
+          sha256sum --check SHA256SUMS.txt
+      - name: Publish test release with APK attachment
+        run: |
+          gh release create test-apk-2026-10-05 apk/Subly-test.apk apk/SHA256SUMS.txt --target 49e6b74da79325573c9f4437e07d424b5c735376 --prerelease --title 'Subly — APK для тестирования' --notes 'Тестовая сборка Android от 5 октября 2026 года. APK подписан тестовым ключом и запускается без Expo Go. Не предназначен для публикации в Google Play. Работа на реальном устройстве и настройки Supabase требуют проверки.'
